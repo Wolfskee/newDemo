@@ -6,14 +6,30 @@ import {
   NavbarItem,
   Link,
   Button,
+  Avatar,
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
 } from "@nextui-org/react";
 import NextLink from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { user, logout } = useAuth();
+
+  // Don't show navbar on admin pages
+  if (pathname?.startsWith("/admin")) {
+    return null;
+  }
+
+  const handleLogout = () => {
+    logout();
+    router.push("/");
+  };
 
   return (
     <NextUINavbar maxWidth="xl" position="sticky">
@@ -49,16 +65,34 @@ export default function Navbar() {
       </NavbarContent>
       <NavbarContent justify="end">
         {user ? (
-          <>
-            <NavbarItem>
-              <span className="text-sm">Welcome, {user.email}</span>
-            </NavbarItem>
-            <NavbarItem>
-              <Button color="danger" variant="flat" onPress={logout}>
-                Logout
-              </Button>
-            </NavbarItem>
-          </>
+          <NavbarItem>
+            <Dropdown placement="bottom-end">
+              <DropdownTrigger>
+                <Avatar
+                  as="button"
+                  className="transition-transform cursor-pointer"
+                  name={user.email}
+                  size="sm"
+                  fallback="👤"
+                />
+              </DropdownTrigger>
+              <DropdownMenu aria-label="User Actions" variant="flat">
+                <DropdownItem
+                  key="profile"
+                  onPress={() => router.push("/profile")}
+                >
+                  My Profile
+                </DropdownItem>
+                <DropdownItem
+                  key="logout"
+                  color="danger"
+                  onPress={handleLogout}
+                >
+                  Logout
+                </DropdownItem>
+              </DropdownMenu>
+            </Dropdown>
+          </NavbarItem>
         ) : (
           <>
             <NavbarItem>

@@ -39,17 +39,24 @@ export default function AdminLoginPage() {
     // Simulate authentication
     // In production, this would be a real API call
     setTimeout(() => {
-      // For demo: accept any email/password for admin/employee
-      // In production, validate against database
-      const adminEmails = ["admin@example.com", "admin@company.com"];
-      const employeeEmails = ["employee@example.com", "employee@company.com"];
+      // Fixed credentials for demo
+      const ADMIN_EMAIL = "admin@example.com";
+      const ADMIN_PASSWORD = "admin123";
+      const EMPLOYEE_EMAIL = "employee@example.com";
+      const EMPLOYEE_PASSWORD = "employee123";
 
-      const isAdmin =
-        role === "admin" && adminEmails.includes(email.toLowerCase());
-      const isEmployee =
-        role === "employee" && employeeEmails.includes(email.toLowerCase());
+      let isValid = false;
 
-      if (isAdmin || isEmployee || email.includes("@")) {
+      if (role === "admin") {
+        isValid =
+          email.toLowerCase() === ADMIN_EMAIL && password === ADMIN_PASSWORD;
+      } else if (role === "employee") {
+        isValid =
+          email.toLowerCase() === EMPLOYEE_EMAIL &&
+          password === EMPLOYEE_PASSWORD;
+      }
+
+      if (isValid) {
         // Store admin/employee session
         const userData = {
           email,
@@ -58,7 +65,7 @@ export default function AdminLoginPage() {
         localStorage.setItem("adminUser", JSON.stringify(userData));
         router.push("/admin/dashboard");
       } else {
-        setError("Invalid credentials for " + role);
+        setError("Invalid email or password for " + role);
       }
       setLoading(false);
     }, 500);
@@ -111,10 +118,18 @@ export default function AdminLoginPage() {
               <p className="text-danger text-sm text-center">{error}</p>
             )}
             <div className="text-sm text-gray-500 bg-gray-100 dark:bg-gray-800 p-3 rounded">
-              <p className="font-semibold mb-1">Demo Credentials:</p>
-              <p>Admin: admin@example.com</p>
-              <p>Employee: employee@example.com</p>
-              <p className="mt-2 text-xs">(Any password works for demo)</p>
+              <p className="font-semibold mb-2">Demo Credentials:</p>
+              <div className="space-y-1">
+                <p>
+                  <span className="font-semibold">Admin:</span> admin@example.com
+                </p>
+                <p className="ml-4">Password: admin123</p>
+                <p className="mt-2">
+                  <span className="font-semibold">Employee:</span>{" "}
+                  employee@example.com
+                </p>
+                <p className="ml-4">Password: employee123</p>
+              </div>
             </div>
             <Button
               type="submit"
