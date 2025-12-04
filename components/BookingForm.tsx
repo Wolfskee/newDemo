@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardBody,
@@ -13,6 +13,7 @@ import {
   DatePicker,
 } from "@nextui-org/react";
 import { parseDate, CalendarDate } from "@internationalized/date";
+import { useAuth } from "@/contexts/AuthContext";
 
 const timeSlots = [
   "09:00 AM",
@@ -33,7 +34,12 @@ const services = [
   "Training & Education",
 ];
 
-export default function BookingForm() {
+interface BookingFormProps {
+  onBookingSuccess?: () => void;
+}
+
+export default function BookingForm({ onBookingSuccess }: BookingFormProps) {
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -45,6 +51,16 @@ export default function BookingForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+
+  // Auto-fill email if user is logged in
+  useEffect(() => {
+    if (user?.email) {
+      setFormData((prev) => ({
+        ...prev,
+        email: user.email || "",
+      }));
+    }
+  }, [user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,12 +108,17 @@ export default function BookingForm() {
       setSubmitMessage(data.message || "Booking request submitted successfully! We'll contact you soon.");
       setFormData({
         name: "",
-        email: "",
+        email: user?.email || "",
         date: null,
         time: "",
         service: "",
         description: "",
       });
+      
+      // Call success callback if provided
+      if (onBookingSuccess) {
+        onBookingSuccess();
+      }
     } catch (error) {
       console.error("Error submitting booking:", error);
       setErrorMessage(
@@ -111,17 +132,9 @@ export default function BookingForm() {
   };
 
   return (
-    <section className="py-20 px-4 bg-white dark:bg-gray-900">
-      <div className="max-w-3xl mx-auto">
-        <h2 className="text-4xl font-bold text-center mb-4 text-gray-900 dark:text-white">
-          Book a Service
-        </h2>
-        <p className="text-center text-gray-600 dark:text-gray-400 mb-12 text-lg">
-          Fill out the form below to schedule an appointment with us
-        </p>
         <Card>
           <CardHeader className="pb-4">
-            <h3 className="text-2xl font-semibold">Booking Form</h3>
+            <h3 className="text-2xl font-semibold">Book a Service</h3>
           </CardHeader>
           <CardBody>
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -146,6 +159,8 @@ export default function BookingForm() {
                   }
                   isRequired
                   fullWidth
+                  isReadOnly={!!user?.email}
+                  description={user?.email ? "Email from your account" : undefined}
                 />
               </div>
 
@@ -235,7 +250,5 @@ export default function BookingForm() {
             </form>
           </CardBody>
         </Card>
-      </div>
-    </section>
   );
 }

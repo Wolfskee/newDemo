@@ -12,6 +12,7 @@ import {
 } from "@nextui-org/react";
 import { useAuth } from "@/contexts/AuthContext";
 import BookingCalendar from "@/components/BookingCalendar";
+import BookingForm from "@/components/BookingForm";
 
 interface Booking {
   id: string;
@@ -38,6 +39,18 @@ export default function ProfilePage() {
       fetchBookings();
     }
   }, [user, router]);
+
+  // Scroll to booking form if hash is present
+  useEffect(() => {
+    if (window.location.hash === "#booking") {
+      setTimeout(() => {
+        const element = document.getElementById("booking");
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }, 100);
+    }
+  }, []);
 
   const fetchBookings = async () => {
     if (!user?.email) return;
@@ -128,6 +141,11 @@ export default function ProfilePage() {
               </div>
             </CardBody>
           </Card>
+        </div>
+
+        {/* Book a Service Form */}
+        <div id="booking" className="mt-6 scroll-mt-6">
+          <BookingForm onBookingSuccess={fetchBookings} />
         </div>
 
         {/* My Bookings Calendar */}

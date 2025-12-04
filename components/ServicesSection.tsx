@@ -1,31 +1,44 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { Card, CardBody } from "@nextui-org/react";
 import Link from "next/link";
 
-const services = [
-  {
-    id: 1,
-    name: "Consulting Services",
-    description:
-      "Expert consulting to help your business grow and succeed with tailored solutions.",
-    icon: "💼",
-  },
-  {
-    id: 2,
-    name: "Technical Support",
-    description:
-      "24/7 technical support to ensure your systems run smoothly and efficiently.",
-    icon: "🔧",
-  },
-  {
-    id: 3,
-    name: "Custom Solutions",
-    description:
-      "Bespoke solutions designed specifically for your unique business requirements.",
-    icon: "⚙️",
-  },
-];
+interface Service {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  image?: string;
+  features: string[];
+  createdAt: string;
+  updatedAt: string;
+}
 
 export default function ServicesSection() {
+  const [services, setServices] = useState<Service[]>([]);
+
+  useEffect(() => {
+    fetchServices();
+  }, []);
+
+  const fetchServices = async () => {
+    try {
+      const response = await fetch("/api/services");
+      const data = await response.json();
+      if (data.success) {
+        // Show only first 3 services on homepage
+        setServices(data.services.slice(0, 3) || []);
+      }
+    } catch (error) {
+      console.error("Error fetching services:", error);
+    }
+  };
+
+  if (services.length === 0) {
+    return null;
+  }
+
   return (
     <section className="py-20 px-4 bg-gray-50 dark:bg-gray-800">
       <div className="max-w-7xl mx-auto">

@@ -62,6 +62,30 @@ export default function Navbar() {
             Services
           </Link>
         </NavbarItem>
+        <NavbarItem>
+          <Link
+            as={NextLink}
+            color={pathname === "/about" ? "primary" : "foreground"}
+            href="/about"
+          >
+            About Us
+          </Link>
+        </NavbarItem>
+        <NavbarItem>
+          <Button
+            color="secondary"
+            variant="flat"
+            onPress={() => {
+              if (user) {
+                router.push("/profile#booking");
+              } else {
+                router.push("/login");
+              }
+            }}
+          >
+            Book a Service
+          </Button>
+        </NavbarItem>
       </NavbarContent>
       <NavbarContent justify="end">
         {user ? (

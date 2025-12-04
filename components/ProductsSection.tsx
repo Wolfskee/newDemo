@@ -1,31 +1,43 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { Card, CardBody, CardHeader, Image } from "@nextui-org/react";
 import Link from "next/link";
 
-const products = [
-  {
-    id: 1,
-    name: "Premium Product 1",
-    description: "High-quality product designed for excellence",
-    price: "$99.99",
-    image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500",
-  },
-  {
-    id: 2,
-    name: "Premium Product 2",
-    description: "Innovative solution for modern needs",
-    price: "$149.99",
-    image: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500",
-  },
-  {
-    id: 3,
-    name: "Premium Product 3",
-    description: "Cutting-edge technology at your fingertips",
-    price: "$199.99",
-    image: "https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=500",
-  },
-];
+interface Product {
+  id: string;
+  name: string;
+  description: string;
+  price: string;
+  image: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export default function ProductsSection() {
+  const [products, setProducts] = useState<Product[]>([]);
+
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  const fetchProducts = async () => {
+    try {
+      const response = await fetch("/api/products");
+      const data = await response.json();
+      if (data.success) {
+        // Show only first 3 products on homepage
+        setProducts(data.products.slice(0, 3) || []);
+      }
+    } catch (error) {
+      console.error("Error fetching products:", error);
+    }
+  };
+
+  if (products.length === 0) {
+    return null;
+  }
+
   return (
     <section className="py-20 px-4 bg-white dark:bg-gray-900">
       <div className="max-w-7xl mx-auto">

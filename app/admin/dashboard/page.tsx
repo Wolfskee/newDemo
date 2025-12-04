@@ -74,9 +74,18 @@ export default function AdminDashboard() {
               Welcome, {adminUser.email} ({adminUser.role})
             </p>
           </div>
-          <Button color="danger" variant="flat" onPress={handleLogout}>
-            Logout
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              color="default"
+              variant="flat"
+              onPress={() => router.push("/")}
+            >
+              Home
+            </Button>
+            <Button color="danger" variant="flat" onPress={handleLogout}>
+              Logout
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -139,17 +148,37 @@ export default function AdminDashboard() {
               <h2 className="text-2xl font-semibold">Quick Actions</h2>
             </CardHeader>
             <CardBody className="space-y-4">
-              <Button color="primary" fullWidth variant="flat">
+              <Button
+                color="primary"
+                fullWidth
+                variant="flat"
+                onPress={() => router.push("/admin/products")}
+              >
                 Manage Products
               </Button>
-              <Button color="secondary" fullWidth variant="flat">
+              <Button
+                color="secondary"
+                fullWidth
+                variant="flat"
+                onPress={() => router.push("/admin/services")}
+              >
                 Manage Services
               </Button>
-              <Button color="success" fullWidth variant="flat">
+              <Button
+                color="success"
+                fullWidth
+                variant="flat"
+                onPress={() => router.push("/admin/users")}
+              >
                 View Users
               </Button>
               {adminUser.role === "admin" && (
-                <Button color="warning" fullWidth variant="flat">
+                <Button
+                  color="warning"
+                  fullWidth
+                  variant="flat"
+                  onPress={() => router.push("/admin/employees")}
+                >
                   Manage Employees
                 </Button>
               )}

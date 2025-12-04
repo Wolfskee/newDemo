@@ -56,3 +56,4 @@ export function addBooking(booking: Booking) {
 
 // Export for use in booking route
 export { bookings };
+

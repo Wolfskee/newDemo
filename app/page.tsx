@@ -1,7 +1,7 @@
 import Hero from "@/components/Hero";
 import ProductsSection from "@/components/ProductsSection";
 import ServicesSection from "@/components/ServicesSection";
-import BookingForm from "@/components/BookingForm";
+import GoogleMap from "@/components/GoogleMap";
 
 export default function Home() {
   return (
@@ -9,7 +9,7 @@ export default function Home() {
       <Hero />
       <ProductsSection />
       <ServicesSection />
-      <BookingForm />
+      <GoogleMap />
     </main>
   );
 }
