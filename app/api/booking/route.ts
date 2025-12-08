@@ -77,6 +77,73 @@ export async function POST(request: NextRequest) {
 
     console.log("Booking email sent successfully to:", businessEmail);
 
+    // Email content for customer confirmation
+    const customerEmailHtml = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h2 style="color: #333; border-bottom: 2px solid #0070f3; padding-bottom: 10px;">
+          Booking Confirmation
+        </h2>
+        <p style="color: #666; font-size: 16px; line-height: 1.6;">
+          Dear ${name},
+        </p>
+        <p style="color: #666; font-size: 16px; line-height: 1.6;">
+          Thank you for your booking request! We have received your reservation and will contact you soon to confirm the details.
+        </p>
+        <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <h3 style="color: #333; margin-top: 0;">Your Booking Details:</h3>
+          <table style="width: 100%; color: #666;">
+            <tr>
+              <td style="padding: 8px 0; font-weight: bold; width: 120px;">Name:</td>
+              <td style="padding: 8px 0;">${name}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-weight: bold;">Email:</td>
+              <td style="padding: 8px 0;">${email}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-weight: bold;">Date:</td>
+              <td style="padding: 8px 0;">${date}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-weight: bold;">Time:</td>
+              <td style="padding: 8px 0;">${time}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-weight: bold;">Service:</td>
+              <td style="padding: 8px 0;">${service}</td>
+            </tr>
+            ${description ? `
+            <tr>
+              <td style="padding: 8px 0; font-weight: bold; vertical-align: top;">Description:</td>
+              <td style="padding: 8px 0;">${description}</td>
+            </tr>
+            ` : ""}
+            <tr>
+              <td style="padding: 8px 0; font-weight: bold;">Submitted At:</td>
+              <td style="padding: 8px 0;">${new Date().toLocaleString()}</td>
+            </tr>
+          </table>
+        </div>
+        <p style="color: #666; font-size: 16px; line-height: 1.6;">
+          Our team will review your request and get back to you shortly. If you have any questions or need to make changes to your booking, please don't hesitate to contact us.
+        </p>
+        <p style="color: #666; font-size: 16px; line-height: 1.6;">
+          Best regards,<br>
+          <strong>Booking System Team</strong>
+        </p>
+      </div>
+    `;
+
+    // Send confirmation email to customer
+    await transporter.sendMail({
+      from: `"Booking System" <${smtpUser}>`,
+      to: email,
+      subject: `Booking Confirmation - ${service} on ${date}`,
+      html: customerEmailHtml,
+    });
+
+    console.log("Confirmation email sent successfully to:", email);
+
     // Save booking to storage
     const bookingId = `booking_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     addBooking({
