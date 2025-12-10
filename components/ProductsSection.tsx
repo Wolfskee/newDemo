@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Card, CardBody, CardHeader, Image } from "@nextui-org/react";
 import Link from "next/link";
+import { apiUrl } from "@/lib/api-config";
 
 interface Product {
   id: string;
@@ -23,7 +24,7 @@ export default function ProductsSection() {
 
   const fetchProducts = async () => {
     try {
-      const response = await fetch("/api/products");
+      const response = await fetch(apiUrl("api/products"));
       const data = await response.json();
       if (data.success) {
         // Show only first 3 products on homepage

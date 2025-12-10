@@ -13,6 +13,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import BookingCalendar from "@/components/BookingCalendar";
 import BookingForm from "@/components/BookingForm";
+import { apiUrl } from "@/lib/api-config";
 
 interface Booking {
   id: string;
@@ -56,7 +57,7 @@ export default function ProfilePage() {
     if (!user?.email) return;
     
     try {
-      const response = await fetch(`/api/bookings?email=${encodeURIComponent(user.email)}`);
+      const response = await fetch(apiUrl(`api/bookings?email=${encodeURIComponent(user.email)}`));
       const data = await response.json();
       if (data.success) {
         setBookings(data.bookings || []);

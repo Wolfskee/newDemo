@@ -14,6 +14,7 @@ import {
 } from "@nextui-org/react";
 import { parseDate, CalendarDate } from "@internationalized/date";
 import { useAuth } from "@/contexts/AuthContext";
+import { apiUrl } from "@/lib/api-config";
 
 const timeSlots = [
   "09:00 AM",
@@ -90,7 +91,7 @@ export default function BookingForm({ onBookingSuccess }: BookingFormProps) {
         description: formData.description || "",
       };
 
-      const response = await fetch("/api/booking", {
+      const response = await fetch(apiUrl("api/booking"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Card, CardBody } from "@nextui-org/react";
+import { apiUrl } from "@/lib/api-config";
 
 interface Service {
   id: string;
@@ -24,7 +25,7 @@ export default function ServicesPage() {
 
   const fetchServices = async () => {
     try {
-      const response = await fetch("/api/services");
+      const response = await fetch(apiUrl("api/services"));
       const data = await response.json();
       if (data.success) {
         setServices(data.services || []);
