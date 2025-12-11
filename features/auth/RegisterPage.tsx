@@ -10,20 +10,37 @@ import {
   Button,
   Link,
 } from "@nextui-org/react";
-import { useAuth } from "@/contexts/AuthContext";
+import { apiUrl } from "@/lib/api-config";
 
 export default function RegisterPage() {
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { register } = useAuth();
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    // 验证必填字段
+    if (!username.trim()) {
+      setError("Username is required");
+      return;
+    }
+
+    if (!email.trim()) {
+      setError("Email is required");
+      return;
+    }
+
+    if (!phone.trim()) {
+      setError("Phone number is required");
+      return;
+    }
 
     if (password !== confirmPassword) {
       setError("Passwords do not match");
@@ -38,15 +55,41 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      const success = await register(email, password);
-      if (success) {
-        router.push("/");
+      const response = await fetch(apiUrl("auth/register"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          username: username.trim(),
+          email: email.trim(),
+          password: password,
+          role: "CUSTOMER",
+          phone: phone.trim(),
+        }),
+      });
+
+      if (response.status === 201) {
+        // 注册成功
+        router.push("/login");
         router.refresh();
+      } else if (response.status === 401) {
+        // 注册失败
+        const errorData = await response.json().catch(() => ({}));
+        setError(errorData.message || "Registration failed. Please try again.");
       } else {
-        setError("Registration failed. Please try again.");
+        // 其他错误
+        const errorData = await response.json().catch(() => ({}));
+        setError(errorData.message || "An error occurred. Please try again.");
       }
     } catch (err) {
-      setError("An error occurred. Please try again.");
+      console.error("Registration error:", err);
+      // 检查是否是网络错误
+      if (err instanceof TypeError && err.message === "Failed to fetch") {
+        setError("Unable to connect to server. Please check your internet connection or try again later.");
+      } else {
+        setError("An error occurred. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -62,11 +105,29 @@ export default function RegisterPage() {
         <CardBody className="pb-8">
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input
+              label="Username"
+              type="text"
+              placeholder="Enter your username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+              fullWidth
+            />
+            <Input
               label="Email"
               type="email"
               placeholder="Enter your email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              required
+              fullWidth
+            />
+            <Input
+              label="Phone Number"
+              type="tel"
+              placeholder="Enter your phone number"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
               required
               fullWidth
             />
