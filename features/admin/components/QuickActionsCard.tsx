@@ -45,16 +45,14 @@ export default function QuickActionsCard({ adminUser }: QuickActionsCardProps) {
         >
           View Users
         </Button>
-        {adminUser.role === "admin" && (
-          <Button
-            color="warning"
-            fullWidth
-            variant="flat"
-            onPress={() => router.push("/admin/employees")}
-          >
-            Manage Employees
-          </Button>
-        )}
+        <Button
+          color="warning"
+          fullWidth
+          variant="flat"
+          onPress={() => router.push("/admin/employees")}
+        >
+          Manage Employees
+        </Button>
       </CardBody>
     </Card>
   );

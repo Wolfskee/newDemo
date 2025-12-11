@@ -10,31 +10,71 @@ import {
   Button,
   Link,
 } from "@nextui-org/react";
+import { apiUrl } from "@/lib/api-config";
 import { useAuth } from "@/contexts/AuthContext";
+import { User } from "@/types/api";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
   const router = useRouter();
+  const { setUser } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    if (!email.trim()) {
+      setError("Email is required");
+      return;
+    }
+
+    if (!password) {
+      setError("Password is required");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const success = await login(email, password);
-      if (success) {
-        router.push("/");
+      const response = await fetch(apiUrl("auth/login"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          password: password,
+        }),
+      });
+
+      if (response.status === 200) {
+        // 登录成功，获取用户信息并更新 AuthContext
+        const userData: User = await response.json();
+        setUser(userData);
+        
+        // 根据角色跳转
+        if (userData.role === "ADMIN" || userData.role === "admin") {
+          router.push("/admin/dashboard");
+        } else {
+          router.push("/");
+        }
         router.refresh();
       } else {
-        setError("Invalid email or password");
+        // 登录失败
+        const errorData = await response.json().catch(() => ({}));
+        setError(errorData.message || "Invalid email or password");
       }
     } catch (err) {
-      setError("An error occurred. Please try again.");
+      console.error("Login error:", err);
+      // 检查是否是网络错误
+      if (err instanceof TypeError && err.message === "Failed to fetch") {
+        setError("Unable to connect to server. Please check your internet connection or try again later.");
+      } else {
+        setError("An error occurred. Please try again.");
+      }
     } finally {
       setLoading(false);
     }

@@ -29,6 +29,7 @@ export default function Navbar() {
   const handleLogout = () => {
     logout();
     router.push("/");
+    router.refresh();
   };
 
   return (
@@ -95,7 +96,7 @@ export default function Navbar() {
                 <Avatar
                   as="button"
                   className="transition-transform cursor-pointer"
-                  name={user.email}
+                  name={user.username || user.email}
                   size="sm"
                   fallback="👤"
                 />
