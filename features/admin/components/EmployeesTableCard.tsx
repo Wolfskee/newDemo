@@ -38,59 +38,49 @@ export default function EmployeesTableCard({ employees, onEdit, onDelete }: Empl
             <TableColumn>CREATED AT</TableColumn>
             <TableColumn>ACTIONS</TableColumn>
           </TableHeader>
-          <TableBody>
-            {employees.length > 0 ? (
-              employees.map((employee) => (
-                <TableRow key={employee.id}>
-                  <TableCell>
-                    <button
-                      onClick={() =>
-                        router.push(
-                          `/admin/employees/${encodeURIComponent(employee.email)}`
-                        )
-                      }
-                      className="font-semibold text-primary hover:underline cursor-pointer"
+          <TableBody emptyContent="No employees found">
+            {employees.map((employee) => (
+              <TableRow key={employee.id}>
+                <TableCell>
+                  <button
+                    onClick={() =>
+                      router.push(
+                        `/admin/employees/${encodeURIComponent(employee.email)}`
+                      )
+                    }
+                    className="font-semibold text-primary hover:underline cursor-pointer"
+                  >
+                    {employee.email}
+                  </button>
+                </TableCell>
+                <TableCell>
+                  <Chip size="sm" variant="flat" color="warning">
+                    EMPLOYEE
+                  </Chip>
+                </TableCell>
+                <TableCell>{formatDate(employee.createdAt)}</TableCell>
+                <TableCell>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      color="primary"
+                      variant="flat"
+                      onPress={() => onEdit(employee)}
                     >
-                      {employee.email}
-                    </button>
-                  </TableCell>
-                  <TableCell>
-                    <Chip size="sm" variant="flat" color="warning">
-                      EMPLOYEE
-                    </Chip>
-                  </TableCell>
-                  <TableCell>{formatDate(employee.createdAt)}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        color="primary"
-                        variant="flat"
-                        onPress={() => onEdit(employee)}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        size="sm"
-                        color="danger"
-                        variant="flat"
-                        onPress={() => onDelete(employee.id)}
-                      >
-                        Delete
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={4} className="text-center py-8">
-                  <p className="text-gray-500">
-                    No employees found
-                  </p>
+                      Edit
+                    </Button>
+                    <Button
+                      size="sm"
+                      color="danger"
+                      variant="flat"
+                      onPress={() => onDelete(employee.id)}
+                    >
+                      Delete
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
-            )}
+            ))}
           </TableBody>
         </Table>
       </CardBody>

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@nextui-org/react";
 import { apiUrl } from "@/lib/api-config";
-import { User } from "@/types/api";
+import { User, UserListResponse } from "@/types/api";
 import SearchCard from "./components/SearchCard";
 import UsersTableCard from "./components/UsersTableCard";
 
@@ -26,11 +26,11 @@ export default function ManageUsersPage() {
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch(apiUrl("api/user"));
+      const response = await fetch(apiUrl("user"));
       if (!response.ok) {
         throw new Error("Failed to fetch users");
       }
-      const data = await response.json();
+      const data: UserListResponse = await response.json();
       setUsers(data.users || []);
       setLoading(false);
     } catch (error) {
@@ -45,19 +45,19 @@ export default function ManageUsersPage() {
     }
 
     try {
-      const response = await fetch(apiUrl(`api/user/${id}`), {
+      const response = await fetch(apiUrl(`user/${id}`), {
         method: "DELETE",
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to delete user");
+      if (response.status === 201) {
+        await fetchUsers();
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        alert(errorData.message || "Failed to delete user");
       }
-
-      await fetchUsers();
     } catch (error) {
       console.error("Error deleting user:", error);
-      alert(error instanceof Error ? error.message : "Failed to delete user");
+      alert("Failed to delete user");
     }
   };
 

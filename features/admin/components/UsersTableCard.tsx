@@ -20,6 +20,17 @@ export default function UsersTableCard({ users, onDelete }: UsersTableCardProps)
     });
   };
 
+  const getRoleColor = (role: string) => {
+    const roleUpper = role.toUpperCase();
+    if (roleUpper === "ADMIN") {
+      return "danger";
+    } else if (roleUpper === "EMPLOYEE") {
+      return "warning";
+    } else {
+      return "primary";
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -39,55 +50,41 @@ export default function UsersTableCard({ users, onDelete }: UsersTableCardProps)
             <TableColumn>CREATED AT</TableColumn>
             <TableColumn>ACTIONS</TableColumn>
           </TableHeader>
-          <TableBody>
-            {users.length > 0 ? (
-              users.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell>
-                    <button
-                      onClick={() => router.push(`/admin/users/${user.id}`)}
-                      className="font-semibold text-primary hover:underline cursor-pointer"
-                    >
-                      {user.username}
-                    </button>
-                  </TableCell>
-                  <TableCell>{user.email}</TableCell>
-                  <TableCell>{user.phone}</TableCell>
-                  <TableCell>
-                    <Chip
-                      color={
-                        user.role === "ADMIN"
-                          ? "danger"
-                          : "primary"
-                      }
-                      size="sm"
-                      variant="flat"
-                    >
-                      {user.role}
-                    </Chip>
-                  </TableCell>
-                  <TableCell>{formatDate(user.createdAt)}</TableCell>
-                  <TableCell>
-                    <Button
-                      size="sm"
-                      color="danger"
-                      variant="flat"
-                      onPress={() => onDelete(user.id)}
-                    >
-                      Delete
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center py-8">
-                  <p className="text-gray-500">
-                    No users found
-                  </p>
+          <TableBody emptyContent="No users found">
+            {users.map((user) => (
+              <TableRow key={user.id}>
+                <TableCell>
+                  <button
+                    onClick={() => router.push(`/admin/users/${user.id}`)}
+                    className="font-semibold text-primary hover:underline cursor-pointer"
+                  >
+                    {user.username}
+                  </button>
+                </TableCell>
+                <TableCell>{user.email}</TableCell>
+                <TableCell>{user.phone}</TableCell>
+                <TableCell>
+                  <Chip
+                    color={getRoleColor(user.role)}
+                    size="sm"
+                    variant="flat"
+                  >
+                    {user.role}
+                  </Chip>
+                </TableCell>
+                <TableCell>{formatDate(user.createdAt)}</TableCell>
+                <TableCell>
+                  <Button
+                    size="sm"
+                    color="danger"
+                    variant="flat"
+                    onPress={() => onDelete(user.id)}
+                  >
+                    Delete
+                  </Button>
                 </TableCell>
               </TableRow>
-            )}
+            ))}
           </TableBody>
         </Table>
       </CardBody>

@@ -4,9 +4,14 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Input, useDisclosure } from "@nextui-org/react";
 import { apiUrl } from "@/lib/api-config";
-import { User } from "@/types/api";
+import { User, UserListResponse } from "@/types/api";
 import SearchCard from "./components/SearchCard";
 import EmployeesTableCard from "./components/EmployeesTableCard";
+
+interface AdminUser {
+  email: string;
+  role: "admin" | "employee";
+}
 
 export default function ManageEmployeesPage() {
   const router = useRouter();
@@ -15,8 +20,12 @@ export default function ManageEmployeesPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [editingEmployee, setEditingEmployee] = useState<User | null>(null);
+  const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
   const [formData, setFormData] = useState({
+    username: "",
     email: "",
+    password: "",
+    phone: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -25,17 +34,26 @@ export default function ManageEmployeesPage() {
     if (!stored) {
       router.push("/admin");
     } else {
+      const user = JSON.parse(stored);
+      setAdminUser(user);
+      
+      // 检查权限：只有 admin 可以访问此页面
+      if (user.role === "employee") {
+        router.push("/admin/dashboard");
+        return;
+      }
+      
       fetchEmployees();
     }
   }, [router]);
 
   const fetchEmployees = async () => {
     try {
-      const response = await fetch(apiUrl("api/user"));
+      const response = await fetch(apiUrl("user"));
       if (!response.ok) {
         throw new Error("Failed to fetch users");
       }
-      const data = await response.json();
+      const data: UserListResponse = await response.json();
       const employeeList = (data.users || []).filter(
         (user: User) => user.role === "EMPLOYEE" || user.role === "employee"
       );
@@ -50,48 +68,100 @@ export default function ManageEmployeesPage() {
   const handleOpenModal = (employee?: User) => {
     if (employee) {
       setEditingEmployee(employee);
-      setFormData({ email: employee.email });
+      setFormData({
+        username: employee.username || "",
+        email: employee.email,
+        password: "",
+        phone: employee.phone || "",
+      });
     } else {
       setEditingEmployee(null);
-      setFormData({ email: "" });
+      setFormData({
+        username: "",
+        email: "",
+        password: "",
+        phone: "",
+      });
     }
     onOpen();
   };
 
   const handleSubmit = async () => {
-    if (!formData.email) {
-      alert("Please enter an email address");
+    // 验证必填字段
+    if (!formData.username || !formData.email || !formData.phone) {
+      alert("Please fill in all required fields (username, email, phone)");
+      return;
+    }
+
+    // 创建新员工时需要密码
+    if (!editingEmployee && !formData.password) {
+      alert("Password is required for new employees");
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const url = editingEmployee ? apiUrl(`api/user/${editingEmployee.id}`) : apiUrl("api/user");
-      const method = editingEmployee ? "PUT" : "POST";
-      const body = editingEmployee
-        ? { ...editingEmployee, email: formData.email, role: "EMPLOYEE" }
-        : { email: formData.email, role: "EMPLOYEE" };
+      if (editingEmployee) {
+        // 编辑现有员工 - 使用 PUT /user/{id}
+        const url = apiUrl(`user/${editingEmployee.id}`);
+        const body = {
+          username: formData.username,
+          email: formData.email,
+          phone: formData.phone,
+          role: "EMPLOYEE",
+          ...(formData.password && { password: formData.password }),
+        };
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      });
+        const response = await fetch(url, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(body),
+        });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to save employee");
+        if (response.status === 201) {
+          await fetchEmployees();
+          onOpenChange();
+          setFormData({ username: "", email: "", password: "", phone: "" });
+          setEditingEmployee(null);
+        } else {
+          const errorData = await response.json().catch(() => ({}));
+          alert(errorData.message || "Failed to update employee");
+        }
+      } else {
+        // 创建新员工 - 使用 POST /auth/register
+        const response = await fetch(apiUrl("auth/register"), {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            username: formData.username.trim(),
+            email: formData.email.trim(),
+            password: formData.password,
+            role: "EMPLOYEE",
+            phone: formData.phone.trim(),
+          }),
+        });
+
+        if (response.status === 201) {
+          // 注册成功后，调用项目中的邮件发送功能
+          // TODO: 请替换为项目中实际的邮件发送函数
+          // 例如: sendEmployeeCredentials(formData.email, formData.username, formData.password);
+          
+          await fetchEmployees();
+          onOpenChange();
+          setFormData({ username: "", email: "", password: "", phone: "" });
+          alert("Employee created successfully! Credentials have been sent to their email.");
+        } else {
+          const errorData = await response.json().catch(() => ({}));
+          alert(errorData.message || "Failed to create employee");
+        }
       }
-
-      await fetchEmployees();
-      onOpenChange();
-      setFormData({ email: "" });
-      setEditingEmployee(null);
     } catch (error) {
       console.error("Error saving employee:", error);
-      alert(error instanceof Error ? error.message : "Failed to save employee");
+      alert("Failed to save employee");
     } finally {
       setIsSubmitting(false);
     }
@@ -103,19 +173,19 @@ export default function ManageEmployeesPage() {
     }
 
     try {
-      const response = await fetch(apiUrl(`api/user/${id}`), {
+      const response = await fetch(apiUrl(`user/${id}`), {
         method: "DELETE",
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to delete employee");
+      if (response.status === 201) {
+        await fetchEmployees();
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        alert(errorData.message || "Failed to delete employee");
       }
-
-      await fetchEmployees();
     } catch (error) {
       console.error("Error deleting employee:", error);
-      alert(error instanceof Error ? error.message : "Failed to delete employee");
+      alert("Failed to delete employee");
     }
   };
 
@@ -170,7 +240,7 @@ export default function ManageEmployeesPage() {
         />
 
         {/* Add/Edit Employee Modal */}
-        <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
+        <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="2xl" scrollBehavior="inside">
           <ModalContent>
             {(onClose) => (
               <>
@@ -178,17 +248,51 @@ export default function ManageEmployeesPage() {
                   {editingEmployee ? "Edit Employee" : "Add New Employee"}
                 </ModalHeader>
                 <ModalBody>
-                  <Input
-                    label="Email"
-                    type="email"
-                    placeholder="Enter employee email"
-                    value={formData.email}
-                    onChange={(e) =>
-                      setFormData({ ...formData, email: e.target.value })
-                    }
-                    isRequired
-                    fullWidth
-                  />
+                  <div className="space-y-4">
+                    <Input
+                      label="Username"
+                      placeholder="Enter username"
+                      value={formData.username}
+                      onChange={(e) =>
+                        setFormData({ ...formData, username: e.target.value })
+                      }
+                      isRequired
+                      fullWidth
+                    />
+                    <Input
+                      label="Email"
+                      type="email"
+                      placeholder="Enter employee email"
+                      value={formData.email}
+                      onChange={(e) =>
+                        setFormData({ ...formData, email: e.target.value })
+                      }
+                      isRequired
+                      fullWidth
+                    />
+                    <Input
+                      label="Password"
+                      type="password"
+                      placeholder={editingEmployee ? "Leave empty to keep current password" : "Enter password"}
+                      value={formData.password}
+                      onChange={(e) =>
+                        setFormData({ ...formData, password: e.target.value })
+                      }
+                      isRequired={!editingEmployee}
+                      fullWidth
+                    />
+                    <Input
+                      label="Phone"
+                      type="tel"
+                      placeholder="Enter phone number"
+                      value={formData.phone}
+                      onChange={(e) =>
+                        setFormData({ ...formData, phone: e.target.value })
+                      }
+                      isRequired
+                      fullWidth
+                    />
+                  </div>
                 </ModalBody>
                 <ModalFooter>
                   <Button variant="light" onPress={onClose}>
