@@ -13,22 +13,27 @@ import {
   Input,
   Textarea,
   Image,
+  Select,
+  SelectItem,
 } from "@nextui-org/react";
 import { apiUrl } from "@/lib/api-config";
-import { Product } from "@/types/api";
+import { Item, ItemListResponse } from "@/types/api";
 import ProductsTableCard from "./components/ProductsTableCard";
 
 export default function ManageProductsPage() {
   const router = useRouter();
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editingProduct, setEditingProduct] = useState<Item | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
     price: "",
-    image: "",
+    duration: "0",
+    category: "",
+    status: "ACTIVE",
+    imageUrl: "",
   });
   const [imagePreview, setImagePreview] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -44,11 +49,18 @@ export default function ManageProductsPage() {
 
   const fetchProducts = async () => {
     try {
-      const response = await fetch(apiUrl("api/products"));
-      const data = await response.json();
-      if (data.success) {
-        setProducts(data.products || []);
+      const response = await fetch(apiUrl("item"));
+      
+      if (!response.ok) {
+        throw new Error("Failed to fetch products");
       }
+
+      const data: ItemListResponse = await response.json();
+      // 只获取 products (duration === 0 或未定义)
+      const productItems = (data.items || []).filter(
+        (item) => !item.duration || item.duration === 0
+      );
+      setProducts(productItems);
       setLoading(false);
     } catch (error) {
       console.error("Error fetching products:", error);
@@ -56,36 +68,29 @@ export default function ManageProductsPage() {
     }
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result as string;
-        setFormData({ ...formData, image: base64String });
-        setImagePreview(base64String);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleOpenModal = (product?: Product) => {
+  const handleOpenModal = (product?: Item) => {
     if (product) {
       setEditingProduct(product);
       setFormData({
         name: product.name,
         description: product.description,
-        price: product.price,
-        image: product.image,
+        price: product.price.toString(),
+        duration: (product.duration || 0).toString(),
+        category: product.category || "",
+        status: product.status || "ACTIVE",
+        imageUrl: product.imageUrl,
       });
-      setImagePreview(product.image);
+      setImagePreview(product.imageUrl);
     } else {
       setEditingProduct(null);
       setFormData({
         name: "",
         description: "",
         price: "",
-        image: "",
+        duration: "0",
+        category: "",
+        status: "ACTIVE",
+        imageUrl: "",
       });
       setImagePreview("");
     }
@@ -93,18 +98,27 @@ export default function ManageProductsPage() {
   };
 
   const handleSubmit = async () => {
-    if (!formData.name || !formData.description || !formData.price || !formData.image) {
-      alert("Please fill in all fields");
+    if (!formData.name || !formData.description || !formData.price || !formData.imageUrl) {
+      alert("Please fill in all required fields");
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const url = apiUrl("api/products");
+      const url = editingProduct 
+        ? apiUrl(`item/${editingProduct.id}`)
+        : apiUrl("item");
       const method = editingProduct ? "PUT" : "POST";
-      const body = editingProduct
-        ? { id: editingProduct.id, ...formData }
-        : formData;
+      
+      const body = {
+        name: formData.name,
+        description: formData.description,
+        price: parseFloat(formData.price),
+        duration: parseInt(formData.duration),
+        category: formData.category || "Product",
+        status: formData.status,
+        imageUrl: formData.imageUrl,
+      };
 
       const response = await fetch(url, {
         method,
@@ -114,15 +128,23 @@ export default function ManageProductsPage() {
         body: JSON.stringify(body),
       });
 
-      const data = await response.json();
-      if (data.success) {
+      if (response.status === 201) {
         await fetchProducts();
         onOpenChange();
-        setFormData({ name: "", description: "", price: "", image: "" });
+        setFormData({
+          name: "",
+          description: "",
+          price: "",
+          duration: "0",
+          category: "",
+          status: "ACTIVE",
+          imageUrl: "",
+        });
         setImagePreview("");
         setEditingProduct(null);
       } else {
-        alert(data.error || "Failed to save product");
+        const errorData = await response.json().catch(() => ({}));
+        alert(errorData.message || "Failed to save product");
       }
     } catch (error) {
       console.error("Error saving product:", error);
@@ -138,15 +160,15 @@ export default function ManageProductsPage() {
     }
 
     try {
-      const response = await fetch(apiUrl(`api/products?id=${id}`), {
+      const response = await fetch(apiUrl(`item/${id}`), {
         method: "DELETE",
       });
 
-      const data = await response.json();
-      if (data.success) {
+      if (response.status === 201) {
         await fetchProducts();
       } else {
-        alert(data.error || "Failed to delete product");
+        const errorData = await response.json().catch(() => ({}));
+        alert(errorData.message || "Failed to delete product");
       }
     } catch (error) {
       console.error("Error deleting product:", error);
@@ -229,7 +251,9 @@ export default function ManageProductsPage() {
 
                     <Input
                       label="Price"
-                      placeholder="e.g., $99.99"
+                      type="number"
+                      step="0.01"
+                      placeholder="e.g., 8.99"
                       value={formData.price}
                       onChange={(e) =>
                         setFormData({ ...formData, price: e.target.value })
@@ -238,28 +262,68 @@ export default function ManageProductsPage() {
                       fullWidth
                     />
 
-                    <div>
-                      <label className="block text-sm font-medium mb-2">
-                        Product Image
-                      </label>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageChange}
-                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-primary-600"
-                      />
-                      {imagePreview && (
-                        <div className="mt-4">
-                          <Image
-                            src={imagePreview}
-                            alt="Preview"
-                            width={200}
-                            height={200}
-                            className="object-cover rounded"
-                          />
-                        </div>
-                      )}
-                    </div>
+                    <Input
+                      label="Duration"
+                      type="number"
+                      value={formData.duration}
+                      onChange={(e) =>
+                        setFormData({ ...formData, duration: e.target.value })
+                      }
+                      isDisabled
+                      description="Duration is fixed to 0 for products"
+                      fullWidth
+                    />
+
+                    <Input
+                      label="Category"
+                      placeholder="e.g., Product"
+                      value={formData.category}
+                      onChange={(e) =>
+                        setFormData({ ...formData, category: e.target.value })
+                      }
+                      fullWidth
+                    />
+
+                    <Select
+                      label="Status"
+                      selectedKeys={[formData.status]}
+                      onSelectionChange={(keys) => {
+                        const selected = Array.from(keys)[0] as string;
+                        setFormData({ ...formData, status: selected });
+                      }}
+                      fullWidth
+                    >
+                      <SelectItem key="ACTIVE" value="ACTIVE">
+                        ACTIVE
+                      </SelectItem>
+                      <SelectItem key="INACTIVE" value="INACTIVE">
+                        INACTIVE
+                      </SelectItem>
+                    </Select>
+
+                    <Input
+                      label="Image URL"
+                      placeholder="https://example.com/images/product.jpg"
+                      value={formData.imageUrl}
+                      onChange={(e) => {
+                        setFormData({ ...formData, imageUrl: e.target.value });
+                        setImagePreview(e.target.value);
+                      }}
+                      isRequired
+                      fullWidth
+                    />
+
+                    {imagePreview && (
+                      <div className="mt-4">
+                        <Image
+                          src={imagePreview}
+                          alt="Preview"
+                          width={200}
+                          height={200}
+                          className="object-cover rounded"
+                        />
+                      </div>
+                    )}
                   </div>
                 </ModalBody>
                 <ModalFooter>

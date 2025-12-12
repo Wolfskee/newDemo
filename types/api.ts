@@ -1,24 +1,25 @@
-// 产品接口
-export interface Product {
+// Item 接口（通用，用于 product 和 service）
+export interface Item {
   id: string;
   name: string;
   description: string;
-  price: string;
-  image: string;
+  price: number;
+  duration?: number;
+  category?: string;
+  status?: string;
+  imageUrl: string;
   createdAt: string;
   updatedAt: string;
 }
 
-// 服务接口
-export interface Service {
-  id: string;
-  name: string;
-  description: string;
-  icon: string;
-  image?: string;
-  features: string[];
-  createdAt: string;
-  updatedAt: string;
+// 产品接口（duration === 0 的 Item）
+export interface Product extends Item {
+  // Product 特有字段可以在这里添加
+}
+
+// 服务接口（duration !== 0 的 Item）
+export interface Service extends Item {
+  // Service 特有字段可以在这里添加
 }
 
 // 预订接口
@@ -63,4 +64,14 @@ export interface Employee extends User {
 export interface AdminUser {
   email: string;
   role: "admin" | "employee";
+}
+
+// Item 列表分页响应接口
+export interface ItemListResponse {
+  items: Item[];
+  total: number;
+  totalPages: number;
+  currentPage: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
 }

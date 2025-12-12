@@ -12,27 +12,29 @@ import {
   useDisclosure,
   Input,
   Textarea,
-  Chip,
   Image,
+  Select,
+  SelectItem,
 } from "@nextui-org/react";
 import { apiUrl } from "@/lib/api-config";
-import { Service } from "@/types/api";
+import { Item, ItemListResponse } from "@/types/api";
 import ServicesTableCard from "./components/ServicesTableCard";
 
 export default function ManageServicesPage() {
   const router = useRouter();
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
-  const [services, setServices] = useState<Service[]>([]);
+  const [services, setServices] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editingService, setEditingService] = useState<Service | null>(null);
+  const [editingService, setEditingService] = useState<Item | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    icon: "",
-    image: "",
-    features: [] as string[],
+    price: "",
+    duration: "",
+    category: "",
+    status: "ACTIVE",
+    imageUrl: "",
   });
-  const [newFeature, setNewFeature] = useState("");
   const [imagePreview, setImagePreview] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -47,11 +49,18 @@ export default function ManageServicesPage() {
 
   const fetchServices = async () => {
     try {
-      const response = await fetch(apiUrl("api/services"));
-      const data = await response.json();
-      if (data.success) {
-        setServices(data.services || []);
+      const response = await fetch(apiUrl("item"));
+      
+      if (!response.ok) {
+        throw new Error("Failed to fetch services");
       }
+
+      const data: ItemListResponse = await response.json();
+      // 只获取 services (duration > 0)
+      const serviceItems = (data.items || []).filter(
+        (item) => item.duration && item.duration > 0
+      );
+      setServices(serviceItems);
       setLoading(false);
     } catch (error) {
       console.error("Error fetching services:", error);
@@ -59,75 +68,62 @@ export default function ManageServicesPage() {
     }
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result as string;
-        setFormData({ ...formData, image: base64String });
-        setImagePreview(base64String);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleAddFeature = () => {
-    if (newFeature.trim()) {
-      setFormData({
-        ...formData,
-        features: [...formData.features, newFeature.trim()],
-      });
-      setNewFeature("");
-    }
-  };
-
-  const handleRemoveFeature = (index: number) => {
-    setFormData({
-      ...formData,
-      features: formData.features.filter((_, i) => i !== index),
-    });
-  };
-
-  const handleOpenModal = (service?: Service) => {
+  const handleOpenModal = (service?: Item) => {
     if (service) {
       setEditingService(service);
       setFormData({
         name: service.name,
         description: service.description,
-        icon: service.icon,
-        image: service.image || "",
-        features: service.features || [],
+        price: service.price.toString(),
+        duration: (service.duration || 0).toString(),
+        category: service.category || "",
+        status: service.status || "ACTIVE",
+        imageUrl: service.imageUrl,
       });
-      setImagePreview(service.image || "");
+      setImagePreview(service.imageUrl);
     } else {
       setEditingService(null);
       setFormData({
         name: "",
         description: "",
-        icon: "",
-        image: "",
-        features: [],
+        price: "",
+        duration: "",
+        category: "",
+        status: "ACTIVE",
+        imageUrl: "",
       });
       setImagePreview("");
     }
-    setNewFeature("");
     onOpen();
   };
 
   const handleSubmit = async () => {
-    if (!formData.name || !formData.description || !formData.icon) {
-      alert("Please fill in all required fields (name, description, icon)");
+    if (!formData.name || !formData.description || !formData.price || !formData.imageUrl) {
+      alert("Please fill in all required fields");
+      return;
+    }
+
+    if (!formData.duration || parseFloat(formData.duration) <= 0) {
+      alert("Duration must be greater than 0 for services");
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const url = apiUrl("api/services");
+      const url = editingService 
+        ? apiUrl(`item/${editingService.id}`)
+        : apiUrl("item");
       const method = editingService ? "PUT" : "POST";
-      const body = editingService
-        ? { id: editingService.id, ...formData }
-        : formData;
+      
+      const body = {
+        name: formData.name,
+        description: formData.description,
+        price: parseFloat(formData.price),
+        duration: parseInt(formData.duration),
+        category: formData.category || "Service",
+        status: formData.status,
+        imageUrl: formData.imageUrl,
+      };
 
       const response = await fetch(url, {
         method,
@@ -137,16 +133,23 @@ export default function ManageServicesPage() {
         body: JSON.stringify(body),
       });
 
-      const data = await response.json();
-      if (data.success) {
+      if (response.status === 201) {
         await fetchServices();
         onOpenChange();
-        setFormData({ name: "", description: "", icon: "", image: "", features: [] });
+        setFormData({
+          name: "",
+          description: "",
+          price: "",
+          duration: "",
+          category: "",
+          status: "ACTIVE",
+          imageUrl: "",
+        });
         setImagePreview("");
         setEditingService(null);
-        setNewFeature("");
       } else {
-        alert(data.error || "Failed to save service");
+        const errorData = await response.json().catch(() => ({}));
+        alert(errorData.message || "Failed to save service");
       }
     } catch (error) {
       console.error("Error saving service:", error);
@@ -162,15 +165,15 @@ export default function ManageServicesPage() {
     }
 
     try {
-      const response = await fetch(apiUrl(`api/services?id=${id}`), {
+      const response = await fetch(apiUrl(`item/${id}`), {
         method: "DELETE",
       });
 
-      const data = await response.json();
-      if (data.success) {
+      if (response.status === 201) {
         await fetchServices();
       } else {
-        alert(data.error || "Failed to delete service");
+        const errorData = await response.json().catch(() => ({}));
+        alert(errorData.message || "Failed to delete service");
       }
     } catch (error) {
       console.error("Error deleting service:", error);
@@ -252,78 +255,81 @@ export default function ManageServicesPage() {
                     />
 
                     <Input
-                      label="Icon (Emoji)"
-                      placeholder="e.g., 💼 🔧 ⚙️ 📚"
-                      value={formData.icon}
+                      label="Price"
+                      type="number"
+                      step="0.01"
+                      placeholder="e.g., 45.99"
+                      value={formData.price}
                       onChange={(e) =>
-                        setFormData({ ...formData, icon: e.target.value })
+                        setFormData({ ...formData, price: e.target.value })
                       }
                       isRequired
-                      description="Enter an emoji to represent this service"
                       fullWidth
                     />
 
-                    <div>
-                      <label className="block text-sm font-medium mb-2">
-                        Service Image (Optional)
-                      </label>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageChange}
-                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-secondary file:text-white hover:file:bg-secondary-600"
-                      />
-                      {imagePreview && (
-                        <div className="mt-4">
-                          <Image
-                            src={imagePreview}
-                            alt="Preview"
-                            width={200}
-                            height={200}
-                            className="object-cover rounded"
-                          />
-                        </div>
-                      )}
-                    </div>
+                    <Input
+                      label="Duration (minutes)"
+                      type="number"
+                      placeholder="e.g., 30"
+                      value={formData.duration}
+                      onChange={(e) =>
+                        setFormData({ ...formData, duration: e.target.value })
+                      }
+                      isRequired
+                      description="Duration must be greater than 0"
+                      fullWidth
+                    />
 
-                    <div>
-                      <label className="block text-sm font-medium mb-2">
-                        Features
-                      </label>
-                      <div className="flex gap-2 mb-2">
-                        <Input
-                          placeholder="Enter a feature"
-                          value={newFeature}
-                          onChange={(e) => setNewFeature(e.target.value)}
-                          onKeyPress={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              handleAddFeature();
-                            }
-                          }}
-                          className="flex-1"
+                    <Input
+                      label="Category"
+                      placeholder="e.g., Service"
+                      value={formData.category}
+                      onChange={(e) =>
+                        setFormData({ ...formData, category: e.target.value })
+                      }
+                      fullWidth
+                    />
+
+                    <Select
+                      label="Status"
+                      selectedKeys={[formData.status]}
+                      onSelectionChange={(keys) => {
+                        const selected = Array.from(keys)[0] as string;
+                        setFormData({ ...formData, status: selected });
+                      }}
+                      fullWidth
+                    >
+                      <SelectItem key="ACTIVE" value="ACTIVE">
+                        ACTIVE
+                      </SelectItem>
+                      <SelectItem key="INACTIVE" value="INACTIVE">
+                        INACTIVE
+                      </SelectItem>
+                    </Select>
+
+                    <Input
+                      label="Image URL"
+                      placeholder="https://example.com/images/service.jpg"
+                      value={formData.imageUrl}
+                      onChange={(e) => {
+                        setFormData({ ...formData, imageUrl: e.target.value });
+                        setImagePreview(e.target.value);
+                      }}
+                      isRequired
+                      fullWidth
+                    />
+
+                    {imagePreview && (
+                      <div className="mt-4">
+                        <Image
+                          src={imagePreview}
+                          alt="Preview"
+                          width={200}
+                          height={200}
+                          className="object-cover rounded"
                         />
-                        <Button
-                          color="secondary"
-                          variant="flat"
-                          onPress={handleAddFeature}
-                        >
-                          Add
-                        </Button>
                       </div>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {formData.features.map((feature, index) => (
-                          <Chip
-                            key={index}
-                            onClose={() => handleRemoveFeature(index)}
-                            variant="flat"
-                            color="secondary"
-                          >
-                            {feature}
-                          </Chip>
-                        ))}
-                      </div>
-                    </div>
+                    )}
                   </div>
                 </ModalBody>
                 <ModalFooter>

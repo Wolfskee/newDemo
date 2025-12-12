@@ -1,23 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardBody } from "@nextui-org/react";
+import { Card, CardBody, CardHeader, Image } from "@nextui-org/react";
 import { apiUrl } from "@/lib/api-config";
-
-interface Service {
-  id: string;
-  name: string;
-  description: string;
-  icon: string;
-  image?: string;
-  features: string[];
-  createdAt: string;
-  updatedAt: string;
-}
+import { Item, ItemListResponse } from "@/types/api";
 
 export default function ServicesPage() {
-  const [services, setServices] = useState<Service[]>([]);
+  const [services, setServices] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     fetchServices();
@@ -25,28 +16,49 @@ export default function ServicesPage() {
 
   const fetchServices = async () => {
     try {
-      const response = await fetch(apiUrl("api/services"));
-      const data = await response.json();
-      if (data.success) {
-        setServices(data.services || []);
+      const response = await fetch(apiUrl("item"));
+      
+      if (!response.ok) {
+        throw new Error("Failed to fetch services");
       }
+
+      const data: ItemListResponse = await response.json();
+      // 只显示 duration > 0 的 items（services）
+      const serviceItems = (data.items || []).filter(
+        (item) => item.duration && item.duration > 0
+      );
+      setServices(serviceItems);
       setLoading(false);
     } catch (error) {
       console.error("Error fetching services:", error);
+      setError("Failed to load services. Please try again later.");
       setLoading(false);
     }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-800 py-12 px-4 flex items-center justify-center">
+      <div className="min-h-screen bg-white dark:bg-gray-900 py-12 px-4 flex items-center justify-center">
         <p className="text-gray-600 dark:text-gray-400">Loading services...</p>
       </div>
     );
   }
 
+  if (error) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-gray-900 py-12 px-4 flex items-center justify-center">
+        <p className="text-red-600 dark:text-red-400">{error}</p>
+      </div>
+    );
+  }
+
+  // 只显示状态为 ACTIVE 的服务
+  const activeServices = services.filter(
+    (service) => !service.status || service.status === "ACTIVE"
+  );
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-800 py-12 px-4">
+    <div className="min-h-screen bg-white dark:bg-gray-900 py-12 px-4">
       <div className="max-w-7xl mx-auto">
         <h1 className="text-5xl font-bold text-center mb-4 text-gray-900 dark:text-white">
           Our Services
@@ -54,31 +66,40 @@ export default function ServicesPage() {
         <p className="text-center text-gray-600 dark:text-gray-400 mb-12 text-lg">
           Explore our comprehensive range of professional services
         </p>
-        {services.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {services.map((service) => (
+        {activeServices.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {activeServices.map((service) => (
               <Card key={service.id} className="hover:shadow-xl transition-shadow">
-                <CardBody className="p-8">
-                  <div className="text-6xl mb-6 text-center">{service.icon}</div>
-                  <h2 className="text-3xl font-semibold mb-4 text-center">
-                    {service.name}
-                  </h2>
-                  <p className="text-gray-600 dark:text-gray-400 mb-6 text-center">
+                <CardHeader className="p-0">
+                  <Image
+                    src={service.imageUrl}
+                    alt={service.name}
+                    width="100%"
+                    height={300}
+                    className="object-cover"
+                  />
+                </CardHeader>
+                <CardBody className="p-6">
+                  <h2 className="text-2xl font-semibold mb-3">{service.name}</h2>
+                  {service.category && (
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                      {service.category}
+                    </p>
+                  )}
+                  <p className="text-gray-600 dark:text-gray-400 mb-4">
                     {service.description}
                   </p>
-                  {service.features && service.features.length > 0 && (
-                    <div className="mb-6">
-                      <h3 className="font-semibold mb-3">Key Features:</h3>
-                      <ul className="list-disc list-inside space-y-2 text-gray-600 dark:text-gray-400">
-                        {service.features.map((feature, idx) => (
-                          <li key={idx}>{feature}</li>
-                        ))}
-                      </ul>
-                    </div>
+                  {service.duration && (
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                      Duration: {service.duration} minutes
+                    </p>
                   )}
-                  <div className="text-center">
-                    <button className="px-8 py-3 bg-primary text-white rounded-lg hover:bg-primary-600 transition-colors">
-                      Contact Us
+                  <div className="flex justify-between items-center mt-4">
+                    <span className="text-3xl font-bold text-primary">
+                      ${service.price.toFixed(2)}
+                    </span>
+                    <button className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-600 transition-colors">
+                      Book Now
                     </button>
                   </div>
                 </CardBody>

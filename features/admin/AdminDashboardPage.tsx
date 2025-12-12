@@ -6,6 +6,8 @@ import { Button } from "@nextui-org/react";
 import StatsCard from "./components/StatsCard";
 import RecentOrdersCard from "./components/RecentOrdersCard";
 import QuickActionsCard from "./components/QuickActionsCard";
+import { apiUrl } from "@/lib/api-config";
+import { ItemListResponse } from "@/types/api";
 
 interface AdminUser {
   email: string;
@@ -14,6 +16,13 @@ interface AdminUser {
 
 export default function AdminDashboardPage() {
   const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
+  const [stats, setStats] = useState([
+    { label: "Total Products", value: "0", color: "primary" },
+    { label: "Total Services", value: "0", color: "secondary" },
+    { label: "Active Users", value: "0", color: "success" },
+    { label: "Orders Today", value: "0", color: "warning" },
+  ]);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
@@ -21,31 +30,59 @@ export default function AdminDashboardPage() {
     const stored = localStorage.getItem("adminUser");
     if (stored) {
       setAdminUser(JSON.parse(stored));
+      fetchStats();
     } else {
       router.push("/admin");
     }
   }, [router]);
+
+  const fetchStats = async () => {
+    try {
+      // 获取 items 数据
+      const response = await fetch(apiUrl("item"));
+      
+      if (!response.ok) {
+        throw new Error("Failed to fetch items");
+      }
+
+      const data: ItemListResponse = await response.json();
+      const totalItems = data.total || 0;
+      
+      // 计算 products 数量（duration === 0 或未定义）
+      const productsCount = (data.items || []).filter(
+        (item) => !item.duration || item.duration === 0
+      ).length;
+      
+      // 计算 services 数量（total - products）
+      const servicesCount = totalItems - productsCount;
+
+      // 更新 stats
+      setStats([
+        { label: "Total Products", value: productsCount.toString(), color: "primary" },
+        { label: "Total Services", value: servicesCount.toString(), color: "secondary" },
+        { label: "Active Users", value: "0", color: "success" }, // 暂时保持为 0，可以后续连接用户 API
+        { label: "Orders Today", value: "0", color: "warning" }, // 暂时保持为 0，可以后续连接订单 API
+      ]);
+      
+      setLoading(false);
+    } catch (error) {
+      console.error("Error fetching stats:", error);
+      setLoading(false);
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem("adminUser");
     router.push("/admin");
   };
 
-  if (!adminUser) {
+  if (!adminUser || loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <p>Loading...</p>
       </div>
     );
   }
-
-  // Mock data for dashboard
-  const stats = [
-    { label: "Total Products", value: "24", color: "primary" },
-    { label: "Total Services", value: "8", color: "secondary" },
-    { label: "Active Users", value: "156", color: "success" },
-    { label: "Orders Today", value: "12", color: "warning" },
-  ];
 
   const recentOrders = [
     { id: 1, customer: "John Doe", product: "Premium Product 1", status: "Completed", date: "2024-01-15" },
