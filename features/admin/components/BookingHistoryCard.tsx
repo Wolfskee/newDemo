@@ -1,77 +1,73 @@
 "use client";
 
 import { Card, CardBody, CardHeader, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Chip } from "@nextui-org/react";
-import { Booking } from "@/types/api";
+import { Appointment } from "@/types/api";
+import { format, parseISO } from "date-fns";
 
 interface BookingHistoryCardProps {
-  bookings: Booking[];
+  appointments: Appointment[];
 }
 
-export default function BookingHistoryCard({ bookings }: BookingHistoryCardProps) {
+export default function BookingHistoryCard({ appointments }: BookingHistoryCardProps) {
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
+    return format(parseISO(dateString), "MMM dd, yyyy");
   };
 
   const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    return format(parseISO(dateString), "MMM dd, yyyy h:mm a");
+  };
+
+  const formatTime = (dateString: string) => {
+    return format(parseISO(dateString), "h:mm a");
   };
 
   return (
     <Card>
       <CardHeader>
-        <h2 className="text-2xl font-semibold">Booking History</h2>
+        <h2 className="text-2xl font-semibold">Appointment History</h2>
       </CardHeader>
       <CardBody>
-        {bookings.length > 0 ? (
-          <Table aria-label="Booking history table">
-            <TableHeader>
-              <TableColumn>DATE</TableColumn>
-              <TableColumn>TIME</TableColumn>
-              <TableColumn>SERVICE</TableColumn>
-              <TableColumn>NAME</TableColumn>
-              <TableColumn>DESCRIPTION</TableColumn>
-              <TableColumn>BOOKED AT</TableColumn>
-            </TableHeader>
-            <TableBody>
-              {bookings.map((booking) => (
-                <TableRow key={booking.id}>
-                  <TableCell className="font-semibold">
-                    {formatDate(booking.date)}
-                  </TableCell>
-                  <TableCell>{booking.time}</TableCell>
-                  <TableCell>
-                    <Chip size="sm" variant="flat" color="secondary">
-                      {booking.service}
-                    </Chip>
-                  </TableCell>
-                  <TableCell>{booking.name}</TableCell>
-                  <TableCell className="max-w-xs truncate">
-                    {booking.description || "-"}
-                  </TableCell>
-                  <TableCell className="text-sm text-gray-500 dark:text-gray-400">
-                    {formatDateTime(booking.createdAt)}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        ) : (
-          <div className="text-center py-12">
-            <p className="text-gray-500 dark:text-gray-400 text-lg">
-              No bookings found
-            </p>
-          </div>
-        )}
+        <Table aria-label="Appointment history table">
+          <TableHeader>
+            <TableColumn>DATE</TableColumn>
+            <TableColumn>TIME</TableColumn>
+            <TableColumn>TITLE</TableColumn>
+            <TableColumn>STATUS</TableColumn>
+            <TableColumn>DESCRIPTION</TableColumn>
+            <TableColumn>CREATED AT</TableColumn>
+          </TableHeader>
+          <TableBody emptyContent="No appointments found">
+            {appointments.map((appointment) => (
+              <TableRow key={appointment.id}>
+                <TableCell className="font-semibold">
+                  {formatDate(appointment.date)}
+                </TableCell>
+                <TableCell>{formatTime(appointment.date)}</TableCell>
+                <TableCell>{appointment.title}</TableCell>
+                <TableCell>
+                  <Chip
+                    size="sm"
+                    variant="flat"
+                    color={
+                      appointment.status === "PENDING" ? "warning" :
+                      appointment.status === "CONFIRMED" ? "success" :
+                      appointment.status === "CANCELLED" ? "danger" :
+                      "default"
+                    }
+                  >
+                    {appointment.status}
+                  </Chip>
+                </TableCell>
+                <TableCell className="max-w-xs truncate">
+                  {appointment.description || "-"}
+                </TableCell>
+                <TableCell className="text-sm text-gray-500 dark:text-gray-400">
+                  {formatDateTime(appointment.createdAt)}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </CardBody>
     </Card>
   );

@@ -22,7 +22,30 @@ export interface Service extends Item {
   // Service 特有字段可以在这里添加
 }
 
-// 预订接口
+// 预约接口（根据新API文档更新）
+export interface Appointment {
+  id: string;
+  title: string;
+  description?: string;
+  date: string; // ISO 格式，包含日期和时间
+  status: string; // PENDING, CONFIRMED, CANCELLED 等
+  customerId: string;
+  employeeId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 预约列表分页响应接口
+export interface AppointmentListResponse {
+  appointments: Appointment[];
+  total: number;
+  totalPages: number;
+  currentPage: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+}
+
+// 预订接口（保留用于向后兼容，但建议使用 Appointment）
 export interface Booking {
   id: string;
   name: string;

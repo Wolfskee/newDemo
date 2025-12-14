@@ -14,30 +14,20 @@ import { useAuth } from "@/contexts/AuthContext";
 import BookingCalendar from "@/components/BookingCalendar";
 import BookingForm from "@/components/BookingForm";
 import { apiUrl } from "@/lib/api-config";
-
-interface Booking {
-  id: string;
-  name: string;
-  email: string;
-  date: string;
-  time: string;
-  service: string;
-  description?: string;
-  createdAt: string;
-}
+import { Appointment, AppointmentListResponse } from "@/types/api";
 
 export default function ProfilePage() {
   const { user, logout } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
 
   useEffect(() => {
     if (!user) {
       router.push("/login");
     } else {
       setLoading(false);
-      fetchBookings();
+      fetchAppointments();
     }
   }, [user, router]);
 
@@ -53,17 +43,21 @@ export default function ProfilePage() {
     }
   }, []);
 
-  const fetchBookings = async () => {
-    if (!user?.email) return;
+  const fetchAppointments = async () => {
+    if (!user?.id) return;
     
     try {
-      const response = await fetch(apiUrl(`api/bookings?email=${encodeURIComponent(user.email)}`));
-      const data = await response.json();
-      if (data.success) {
-        setBookings(data.bookings || []);
+      const response = await fetch(apiUrl("appointment"));
+      if (response.ok) {
+        const data: AppointmentListResponse = await response.json();
+        // 过滤出当前用户的预约
+        const userAppointments = (data.appointments || []).filter(
+          (apt) => apt.customerId === user.id
+        );
+        setAppointments(userAppointments);
       }
     } catch (error) {
-      console.error("Error fetching bookings:", error);
+      console.error("Error fetching appointments:", error);
     }
   };
 
@@ -97,11 +91,11 @@ export default function ProfilePage() {
             <CardBody className="items-center pt-8 pb-6">
               <Avatar
                 size="lg"
-                name={user.email}
+                name={user.username || user.email}
                 fallback="👤"
                 className="w-24 h-24 mb-4"
               />
-              <h2 className="text-xl font-semibold mb-2">{user.email}</h2>
+              <h2 className="text-xl font-semibold mb-2">{user.username || user.email}</h2>
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 {user.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : "User"}
               </p>
@@ -146,17 +140,16 @@ export default function ProfilePage() {
 
         {/* Book a Service Form */}
         <div id="booking" className="mt-6 scroll-mt-6">
-          <BookingForm onBookingSuccess={fetchBookings} />
+          <BookingForm onBookingSuccess={fetchAppointments} />
         </div>
 
-        {/* My Bookings Calendar */}
+        {/* My Appointments Calendar */}
         <div className="mt-6">
-          <BookingCalendar bookings={bookings} />
+          <BookingCalendar appointments={appointments} />
         </div>
 
         {/* Additional Sections */}
         <div className="mt-6 grid grid-cols-1 md:grid-cols-1 gap-6">
-
           <Card>
             <CardHeader>
               <h3 className="text-xl font-semibold">Settings</h3>

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 interface AdminUser {
   email: string;
-  role: "admin" | "employee";
+  role: string; // 改为 string 以支持 "ADMIN" 或 "admin"
 }
 
 interface QuickActionsCardProps {
@@ -14,6 +14,9 @@ interface QuickActionsCardProps {
 
 export default function QuickActionsCard({ adminUser }: QuickActionsCardProps) {
   const router = useRouter();
+  
+  // 检查是否为 ADMIN（忽略大小写）
+  const isAdmin = adminUser.role?.toUpperCase() === "ADMIN";
 
   return (
     <Card>
@@ -45,7 +48,7 @@ export default function QuickActionsCard({ adminUser }: QuickActionsCardProps) {
         >
           View Users
         </Button>
-        {adminUser.role === "admin" && (
+        {isAdmin && (
           <Button
             color="warning"
             fullWidth

@@ -1,14 +1,31 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardBody, CardHeader, Image } from "@nextui-org/react";
+import { useRouter } from "next/navigation";
+import { Card, CardBody, CardHeader, Image, Button } from "@nextui-org/react";
+import { motion, AnimatePresence } from "framer-motion";
 import { apiUrl } from "@/lib/api-config";
 import { Item, ItemListResponse } from "@/types/api";
+import { useAuth } from "@/contexts/AuthContext";
+import { useCart } from "@/contexts/CartContext";
+
+interface FlyingItem {
+  id: string;
+  product: Item;
+  startX: number;
+  startY: number;
+  endX: number;
+  endY: number;
+}
 
 export default function ProductsPage() {
+  const router = useRouter();
+  const { user } = useAuth();
+  const { addToCart } = useCart();
   const [products, setProducts] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [flyingItems, setFlyingItems] = useState<FlyingItem[]>([]);
 
   useEffect(() => {
     fetchProducts();
@@ -36,6 +53,48 @@ export default function ProductsPage() {
     }
   };
 
+  const handleAddToCart = (product: Item, buttonElement: HTMLElement) => {
+    if (!user) {
+      // 未登录，跳转到登录页面
+      router.push("/login");
+      return;
+    }
+
+    // 获取按钮位置
+    const buttonRect = buttonElement.getBoundingClientRect();
+    const startX = buttonRect.left + buttonRect.width / 2;
+    const startY = buttonRect.top + buttonRect.height / 2;
+
+    // 获取购物车按钮位置
+    const cartButton = document.querySelector('[aria-label="Shopping Cart"]') as HTMLElement;
+    let endX = window.innerWidth - 80; // 默认位置（右上角）
+    let endY = 60; // 默认 Y 位置
+
+    if (cartButton) {
+      const cartRect = cartButton.getBoundingClientRect();
+      endX = cartRect.left + cartRect.width / 2;
+      endY = cartRect.top + cartRect.height / 2;
+    }
+
+    // 创建飞行动画项
+    const flyingItem: FlyingItem = {
+      id: `${product.id}-${Date.now()}`,
+      product,
+      startX,
+      startY,
+      endX,
+      endY,
+    };
+
+    setFlyingItems((prev) => [...prev, flyingItem]);
+
+    // 动画完成后添加到购物车并移除动画项
+    setTimeout(() => {
+      addToCart(product);
+      setFlyingItems((prev) => prev.filter((item) => item.id !== flyingItem.id));
+    }, 800); // 动画持续时间
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-white dark:bg-gray-900 py-12 px-4 flex items-center justify-center">
@@ -58,7 +117,54 @@ export default function ProductsPage() {
   );
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 py-12 px-4">
+    <div className="min-h-screen bg-white dark:bg-gray-900 py-12 px-4 relative">
+      {/* 飞行动画 */}
+      <AnimatePresence>
+        {flyingItems.map((flyingItem) => (
+          <motion.div
+            key={flyingItem.id}
+            className="fixed z-50 pointer-events-none"
+            initial={{
+              x: flyingItem.startX - 20,
+              y: flyingItem.startY - 20,
+              scale: 1,
+              opacity: 1,
+            }}
+            animate={{
+              x: flyingItem.endX - 20,
+              y: flyingItem.endY - 20,
+              scale: 0.3,
+              opacity: 0.8,
+            }}
+            exit={{
+              scale: 0,
+              opacity: 0,
+            }}
+            transition={{
+              duration: 0.8,
+              ease: "easeInOut",
+            }}
+          >
+            <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center shadow-lg">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={2}
+                stroke="white"
+                className="w-6 h-6"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z"
+                />
+              </svg>
+            </div>
+          </motion.div>
+        ))}
+      </AnimatePresence>
+
       <div className="max-w-7xl mx-auto">
         <h1 className="text-5xl font-bold text-center mb-4 text-gray-900 dark:text-white">
           Our Products
@@ -93,9 +199,16 @@ export default function ProductsPage() {
                     <span className="text-3xl font-bold text-primary">
                       ${product.price.toFixed(2)}
                     </span>
-                    <button className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-600 transition-colors">
+                    <Button
+                      color="primary"
+                      onPress={(e) => {
+                        const target = e.target as HTMLElement;
+                        const button = target.closest("button") || target;
+                        handleAddToCart(product, button as HTMLElement);
+                      }}
+                    >
                       Add to Cart
-                    </button>
+                    </Button>
                   </div>
                 </CardBody>
               </Card>

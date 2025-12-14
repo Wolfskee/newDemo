@@ -11,7 +11,7 @@ import { ItemListResponse } from "@/types/api";
 
 interface AdminUser {
   email: string;
-  role: "admin" | "employee";
+  role: string; // 改为 string 以支持 "ADMIN" 或 "admin"
 }
 
 export default function AdminDashboardPage() {

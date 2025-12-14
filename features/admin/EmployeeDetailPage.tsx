@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@nextui-org/react";
 import { apiUrl } from "@/lib/api-config";
-import { Booking, User } from "@/types/api";
+import { User, UserListResponse, Appointment, AppointmentListResponse } from "@/types/api";
 import NotFoundCard from "./components/NotFoundCard";
 import EmployeeInfoCard from "./components/EmployeeInfoCard";
 import BookingHistoryCard from "./components/BookingHistoryCard";
@@ -16,7 +16,7 @@ export default function EmployeeDetailPage() {
   const decodedEmail = decodeURIComponent(email);
 
   const [employee, setEmployee] = useState<User | null>(null);
-  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -30,35 +30,29 @@ export default function EmployeeDetailPage() {
 
   const fetchEmployeeData = async () => {
     try {
-      const usersResponse = await fetch(apiUrl("api/user"));
-      if (!usersResponse.ok) {
-        throw new Error("Failed to fetch users");
-      }
-      const usersData = await usersResponse.json();
-      const foundEmployee = usersData.users?.find(
-        (u: User) => u.email === decodedEmail && (u.role === "EMPLOYEE" || u.role === "employee")
-      );
-      
-      if (foundEmployee) {
-        setEmployee(foundEmployee);
-        const employeeDetailResponse = await fetch(apiUrl(`api/user/${foundEmployee.id}`));
-        if (employeeDetailResponse.ok) {
-          const employeeDetail = await employeeDetailResponse.json();
-          setEmployee(employeeDetail);
-        }
-      }
-
-      const bookingsResponse = await fetch(
-        apiUrl(`api/bookings?email=${encodeURIComponent(decodedEmail)}`)
-      );
-      if (bookingsResponse.ok) {
-        const bookingsData = await bookingsResponse.json();
-        if (bookingsData.success) {
-          const sortedBookings = bookingsData.bookings.sort(
-            (a: Booking, b: Booking) =>
-              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-          );
-          setBookings(sortedBookings);
+      // 获取用户列表，找到对应的员工
+      const usersResponse = await fetch(apiUrl("user"));
+      if (usersResponse.ok) {
+        const usersData: UserListResponse = await usersResponse.json();
+        const foundEmployee = usersData.users?.find(
+          (u: User) => u.email === decodedEmail && (u.role === "EMPLOYEE" || u.role === "employee")
+        );
+        
+        if (foundEmployee) {
+          setEmployee(foundEmployee);
+          
+          // 获取员工的预约
+          const appointmentsResponse = await fetch(apiUrl("appointment"));
+          if (appointmentsResponse.ok) {
+            const appointmentsData: AppointmentListResponse = await appointmentsResponse.json();
+            const employeeAppointments = (appointmentsData.appointments || []).filter(
+              (apt) => apt.employeeId === foundEmployee.id
+            );
+            const sortedAppointments = employeeAppointments.sort(
+              (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            );
+            setAppointments(sortedAppointments);
+          }
         }
       }
 
@@ -100,7 +94,7 @@ export default function EmployeeDetailPage() {
               Employee Details
             </h1>
             <p className="text-gray-600 dark:text-gray-400 mt-2">
-              Booking history for {employee.username || employee.email}
+              Appointment history for {employee.username || employee.email}
             </p>
           </div>
           <Button
@@ -112,8 +106,8 @@ export default function EmployeeDetailPage() {
           </Button>
         </div>
 
-        <EmployeeInfoCard employee={employee} bookingsCount={bookings.length} />
-        <BookingHistoryCard bookings={bookings} />
+        <EmployeeInfoCard employee={employee} bookingsCount={appointments.length} />
+        <BookingHistoryCard appointments={appointments} />
       </div>
     </div>
   );

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@nextui-org/react";
 import { apiUrl } from "@/lib/api-config";
-import { Booking, User } from "@/types/api";
+import { User, UserListResponse, Appointment, AppointmentListResponse } from "@/types/api";
 import NotFoundCard from "./components/NotFoundCard";
 import UserInfoCard from "./components/UserInfoCard";
 import BookingHistoryCard from "./components/BookingHistoryCard";
@@ -12,11 +12,10 @@ import BookingHistoryCard from "./components/BookingHistoryCard";
 export default function UserDetailPage() {
   const router = useRouter();
   const params = useParams();
-  const email = params.email as string;
-  const decodedEmail = decodeURIComponent(email);
+  const userId = params.id as string;
 
   const [user, setUser] = useState<User | null>(null);
-  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -27,40 +26,30 @@ export default function UserDetailPage() {
     } else {
       fetchUserData();
     }
-  }, [router, email]);
+  }, [router, userId]);
 
   const fetchUserData = async () => {
     try {
-      const usersResponse = await fetch(apiUrl("api/user"));
-      if (!usersResponse.ok) {
-        throw new Error("Failed to fetch users");
-      }
-      const usersData = await usersResponse.json();
-      const foundUser = usersData.users?.find(
-        (u: User) => u.email === decodedEmail
-      );
-      
-      if (foundUser) {
-        setUser(foundUser);
-        const userDetailResponse = await fetch(apiUrl(`api/user/${foundUser.id}`));
-        if (userDetailResponse.ok) {
-          const userDetail = await userDetailResponse.json();
-          setUser(userDetail);
-        }
+      // 获取用户信息
+      const userResponse = await fetch(apiUrl(`user/${userId}`));
+      if (userResponse.ok) {
+        const userData = await userResponse.json();
+        setUser(userData);
+      } else if (userResponse.status === 404) {
+        setUser(null);
       }
 
-      const bookingsResponse = await fetch(
-        apiUrl(`api/bookings?email=${encodeURIComponent(decodedEmail)}`)
-      );
-      if (bookingsResponse.ok) {
-        const bookingsData = await bookingsResponse.json();
-        if (bookingsData.success) {
-          const sortedBookings = bookingsData.bookings.sort(
-            (a: Booking, b: Booking) =>
-              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-          );
-          setBookings(sortedBookings);
-        }
+      // 获取用户的预约
+      const appointmentsResponse = await fetch(apiUrl("appointment"));
+      if (appointmentsResponse.ok) {
+        const appointmentsData: AppointmentListResponse = await appointmentsResponse.json();
+        const userAppointments = (appointmentsData.appointments || []).filter(
+          (apt) => apt.customerId === userId
+        );
+        const sortedAppointments = userAppointments.sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+        setAppointments(sortedAppointments);
       }
 
       setLoading(false);
@@ -101,7 +90,7 @@ export default function UserDetailPage() {
               User Details
             </h1>
             <p className="text-gray-600 dark:text-gray-400 mt-2">
-              Booking history for {user.username || user.email}
+              Appointment history for {user.username || user.email}
             </p>
           </div>
           <Button
@@ -113,8 +102,8 @@ export default function UserDetailPage() {
           </Button>
         </div>
 
-        <UserInfoCard user={user} bookingsCount={bookings.length} />
-        <BookingHistoryCard bookings={bookings} />
+        <UserInfoCard user={user} bookingsCount={appointments.length} />
+        <BookingHistoryCard appointments={appointments} />
       </div>
     </div>
   );
