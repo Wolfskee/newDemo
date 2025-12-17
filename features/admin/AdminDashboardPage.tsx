@@ -6,7 +6,8 @@ import { Button } from "@nextui-org/react";
 import StatsCard from "./components/StatsCard";
 import RecentOrdersCard from "./components/RecentOrdersCard";
 import QuickActionsCard from "./components/QuickActionsCard";
-import { apiUrl } from "@/lib/api-config";
+import { apiGet } from "@/lib/api-client";
+import { clearTokens } from "@/lib/api-client";
 import { ItemListResponse } from "@/types/api";
 
 interface AdminUser {
@@ -38,14 +39,9 @@ export default function AdminDashboardPage() {
 
   const fetchStats = async () => {
     try {
-      // 获取 items 数据
-      const response = await fetch(apiUrl("item"));
+      // 使用 apiGet 自动包含 JWT token
+      const data: ItemListResponse = await apiGet<ItemListResponse>("item");
       
-      if (!response.ok) {
-        throw new Error("Failed to fetch items");
-      }
-
-      const data: ItemListResponse = await response.json();
       const totalItems = data.total || 0;
       
       // 计算 products 数量（duration === 0 或未定义）
@@ -73,6 +69,7 @@ export default function AdminDashboardPage() {
 
   const handleLogout = () => {
     localStorage.removeItem("adminUser");
+    clearTokens(); // 清除 JWT tokens
     router.push("/admin");
   };
 

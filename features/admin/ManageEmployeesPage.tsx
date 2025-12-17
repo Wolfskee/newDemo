@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Input, useDisclosure } from "@nextui-org/react";
-import { apiUrl } from "@/lib/api-config";
+import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api-client";
 import { User, UserListResponse } from "@/types/api";
 import SearchCard from "./components/SearchCard";
 import EmployeesTableCard from "./components/EmployeesTableCard";
@@ -49,11 +49,7 @@ export default function ManageEmployeesPage() {
 
   const fetchEmployees = async () => {
     try {
-      const response = await fetch(apiUrl("user"));
-      if (!response.ok) {
-        throw new Error("Failed to fetch users");
-      }
-      const data: UserListResponse = await response.json();
+      const data: UserListResponse = await apiGet<UserListResponse>("user");
       const employeeList = (data.users || []).filter(
         (user: User) => user.role === "EMPLOYEE" || user.role === "employee"
       );
@@ -103,7 +99,6 @@ export default function ManageEmployeesPage() {
     try {
       if (editingEmployee) {
         // 编辑现有员工 - 使用 PUT /user/{id}
-        const url = apiUrl(`user/${editingEmployee.id}`);
         const body = {
           username: formData.username,
           email: formData.email,
@@ -112,56 +107,37 @@ export default function ManageEmployeesPage() {
           ...(formData.password && { password: formData.password }),
         };
 
-        const response = await fetch(url, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(body),
-        });
-
-        if (response.status === 201) {
-          await fetchEmployees();
-          onOpenChange();
-          setFormData({ username: "", email: "", password: "", phone: "" });
-          setEditingEmployee(null);
-        } else {
-          const errorData = await response.json().catch(() => ({}));
-          alert(errorData.message || "Failed to update employee");
-        }
+        await apiPut(`user/${editingEmployee.id}`, body);
+        await fetchEmployees();
+        onOpenChange();
+        setFormData({ username: "", email: "", password: "", phone: "" });
+        setEditingEmployee(null);
       } else {
-        // 创建新员工 - 使用 POST /auth/register
-        const response = await fetch(apiUrl("auth/register"), {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
+        // 创建新员工 - 使用 POST /auth/register (需要 skipAuth: true)
+        await apiPost(
+          "auth/register",
+          {
             username: formData.username.trim(),
             email: formData.email.trim(),
             password: formData.password,
             role: "EMPLOYEE",
             phone: formData.phone.trim(),
-          }),
-        });
+          },
+          { skipAuth: true }
+        );
 
-        if (response.status === 201) {
-          // 注册成功后，调用项目中的邮件发送功能
-          // TODO: 请替换为项目中实际的邮件发送函数
-          // 例如: sendEmployeeCredentials(formData.email, formData.username, formData.password);
-          
-          await fetchEmployees();
-          onOpenChange();
-          setFormData({ username: "", email: "", password: "", phone: "" });
-          alert("Employee created successfully! Credentials have been sent to their email.");
-        } else {
-          const errorData = await response.json().catch(() => ({}));
-          alert(errorData.message || "Failed to create employee");
-        }
+        // 注册成功后，调用项目中的邮件发送功能
+        // TODO: 请替换为项目中实际的邮件发送函数
+        // 例如: sendEmployeeCredentials(formData.email, formData.username, formData.password);
+        
+        await fetchEmployees();
+        onOpenChange();
+        setFormData({ username: "", email: "", password: "", phone: "" });
+        alert("Employee created successfully! Credentials have been sent to their email.");
       }
     } catch (error) {
       console.error("Error saving employee:", error);
-      alert("Failed to save employee");
+      alert(error instanceof Error ? error.message : "Failed to save employee");
     } finally {
       setIsSubmitting(false);
     }
@@ -173,19 +149,11 @@ export default function ManageEmployeesPage() {
     }
 
     try {
-      const response = await fetch(apiUrl(`user/${id}`), {
-        method: "DELETE",
-      });
-
-      if (response.status === 201) {
-        await fetchEmployees();
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        alert(errorData.message || "Failed to delete employee");
-      }
+      await apiDelete(`user/${id}`);
+      await fetchEmployees();
     } catch (error) {
       console.error("Error deleting employee:", error);
-      alert("Failed to delete employee");
+      alert(error instanceof Error ? error.message : "Failed to delete employee");
     }
   };
 

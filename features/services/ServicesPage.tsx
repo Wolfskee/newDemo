@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Card, CardBody, CardHeader, Image } from "@nextui-org/react";
-import { apiUrl } from "@/lib/api-config";
+import { apiGet } from "@/lib/api-client";
 import { Item, ItemListResponse } from "@/types/api";
 
 export default function ServicesPage() {
@@ -16,13 +16,7 @@ export default function ServicesPage() {
 
   const fetchServices = async () => {
     try {
-      const response = await fetch(apiUrl("item"));
-      
-      if (!response.ok) {
-        throw new Error("Failed to fetch services");
-      }
-
-      const data: ItemListResponse = await response.json();
+      const data: ItemListResponse = await apiGet<ItemListResponse>("item");
       // 只显示 duration > 0 的 items（services）
       const serviceItems = (data.items || []).filter(
         (item) => item.duration && item.duration > 0

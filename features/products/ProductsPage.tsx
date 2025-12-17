@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardBody, CardHeader, Image, Button } from "@nextui-org/react";
 import { motion, AnimatePresence } from "framer-motion";
-import { apiUrl } from "@/lib/api-config";
+import { apiGet } from "@/lib/api-client";
 import { Item, ItemListResponse } from "@/types/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
@@ -33,13 +33,7 @@ export default function ProductsPage() {
 
   const fetchProducts = async () => {
     try {
-      const response = await fetch(apiUrl("item"));
-      
-      if (!response.ok) {
-        throw new Error("Failed to fetch products");
-      }
-
-      const data: ItemListResponse = await response.json();
+      const data: ItemListResponse = await apiGet<ItemListResponse>("item");
       // 只显示 duration === 0 或未定义的 items（products）
       const productItems = (data.items || []).filter(
         (item) => !item.duration || item.duration === 0

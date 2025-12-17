@@ -16,7 +16,7 @@ import {
   Select,
   SelectItem,
 } from "@nextui-org/react";
-import { apiUrl } from "@/lib/api-config";
+import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api-client";
 import { Item, ItemListResponse } from "@/types/api";
 import ServicesTableCard from "./components/ServicesTableCard";
 
@@ -49,13 +49,7 @@ export default function ManageServicesPage() {
 
   const fetchServices = async () => {
     try {
-      const response = await fetch(apiUrl("item"));
-      
-      if (!response.ok) {
-        throw new Error("Failed to fetch services");
-      }
-
-      const data: ItemListResponse = await response.json();
+      const data: ItemListResponse = await apiGet<ItemListResponse>("item");
       // 只获取 services (duration > 0)
       const serviceItems = (data.items || []).filter(
         (item) => item.duration && item.duration > 0
@@ -110,11 +104,6 @@ export default function ManageServicesPage() {
 
     setIsSubmitting(true);
     try {
-      const url = editingService 
-        ? apiUrl(`item/${editingService.id}`)
-        : apiUrl("item");
-      const method = editingService ? "PUT" : "POST";
-      
       const body = {
         name: formData.name,
         description: formData.description,
@@ -125,35 +114,28 @@ export default function ManageServicesPage() {
         imageUrl: formData.imageUrl,
       };
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      });
-
-      if (response.status === 201) {
-        await fetchServices();
-        onOpenChange();
-        setFormData({
-          name: "",
-          description: "",
-          price: "",
-          duration: "",
-          category: "",
-          status: "ACTIVE",
-          imageUrl: "",
-        });
-        setImagePreview("");
-        setEditingService(null);
+      if (editingService) {
+        await apiPut(`item/${editingService.id}`, body);
       } else {
-        const errorData = await response.json().catch(() => ({}));
-        alert(errorData.message || "Failed to save service");
+        await apiPost("item", body);
       }
+
+      await fetchServices();
+      onOpenChange();
+      setFormData({
+        name: "",
+        description: "",
+        price: "",
+        duration: "",
+        category: "",
+        status: "ACTIVE",
+        imageUrl: "",
+      });
+      setImagePreview("");
+      setEditingService(null);
     } catch (error) {
       console.error("Error saving service:", error);
-      alert("Failed to save service");
+      alert(error instanceof Error ? error.message : "Failed to save service");
     } finally {
       setIsSubmitting(false);
     }
@@ -165,19 +147,11 @@ export default function ManageServicesPage() {
     }
 
     try {
-      const response = await fetch(apiUrl(`item/${id}`), {
-        method: "DELETE",
-      });
-
-      if (response.status === 201) {
-        await fetchServices();
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        alert(errorData.message || "Failed to delete service");
-      }
+      await apiDelete(`item/${id}`);
+      await fetchServices();
     } catch (error) {
       console.error("Error deleting service:", error);
-      alert("Failed to delete service");
+      alert(error instanceof Error ? error.message : "Failed to delete service");
     }
   };
 

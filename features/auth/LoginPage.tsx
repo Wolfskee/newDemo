@@ -10,9 +10,9 @@ import {
   Button,
   Link,
 } from "@nextui-org/react";
-import { apiUrl } from "@/lib/api-config";
+import { apiPost } from "@/lib/api-client";
 import { useAuth } from "@/contexts/AuthContext";
-import { User } from "@/types/api";
+import { User, AuthResponse } from "@/types/api";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -20,7 +20,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const { setUser } = useAuth();
+  const { setUser, setAuthTokens } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,39 +39,50 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const response = await fetch(apiUrl("auth/login"), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+      const authData: AuthResponse = await apiPost<AuthResponse>(
+        "auth/login",
+        {
           email: email.trim(),
           password: password,
-        }),
-      });
+        },
+        { skipAuth: true }
+      );
 
-      if (response.status === 200) {
-        // 登录成功，获取用户信息并更新 AuthContext
-        const userData: User = await response.json();
-        setUser(userData);
-        
-        // 根据角色跳转
-        if (userData.role === "ADMIN" || userData.role === "admin") {
-          router.push("/admin/dashboard");
-        } else {
-          router.push("/");
-        }
-        router.refresh();
-      } else {
-        // 登录失败
-        const errorData = await response.json().catch(() => ({}));
-        setError(errorData.message || "Invalid email or password");
+      // 保存 tokens
+      if (authData.accessToken && authData.refreshToken) {
+        setAuthTokens(authData.accessToken, authData.refreshToken);
       }
+
+      // 如果有用户信息，保存用户信息
+      if (authData.user) {
+        setUser(authData.user);
+      } else {
+        // 如果没有用户信息，可能需要单独获取
+        // 这里假设登录响应包含用户信息，如果没有则需要额外请求
+        // 暂时使用一个占位符用户对象
+        setUser({
+          id: "",
+          username: email.trim(),
+          email: email.trim(),
+          role: "CUSTOMER",
+          phone: "",
+          createdAt: "",
+          updatedAt: "",
+        });
+      }
+
+      // 根据角色跳转
+      const userRole = authData.user?.role?.toUpperCase();
+      if (userRole === "ADMIN" || userRole === "admin") {
+        router.push("/admin/dashboard");
+      } else {
+        router.push("/");
+      }
+      router.refresh();
     } catch (err) {
       console.error("Login error:", err);
-      // 检查是否是网络错误
-      if (err instanceof TypeError && err.message === "Failed to fetch") {
-        setError("Unable to connect to server. Please check your internet connection or try again later.");
+      if (err instanceof Error) {
+        setError(err.message);
       } else {
         setError("An error occurred. Please try again.");
       }

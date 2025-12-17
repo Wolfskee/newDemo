@@ -11,8 +11,9 @@ import {
   Link,
 } from "@nextui-org/react";
 import NextLink from "next/link";
-import { apiUrl } from "@/lib/api-config";
-import { User } from "@/types/api";
+import { apiPost } from "@/lib/api-client";
+import { User, AuthResponse } from "@/types/api";
+import { setTokens } from "@/lib/api-client";
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState("");
@@ -38,48 +39,41 @@ export default function AdminLoginPage() {
     setLoading(true);
 
     try {
-      const response = await fetch(apiUrl("auth/login"), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+      const authData: AuthResponse = await apiPost<AuthResponse>(
+        "auth/login",
+        {
           email: email.trim(),
           password: password,
-        }),
-      });
+        },
+        { skipAuth: true }
+      );
 
-      if (response.status === 200) {
-        // 登录成功，获取用户信息
-        const userData: User = await response.json();
-        
-        // 验证用户角色是否为管理员或员工
-        const userRole = userData.role?.toUpperCase();
-        if (userRole !== "ADMIN" && userRole !== "EMPLOYEE") {
-          setError("This account is not authorized to access the admin portal.");
-          setLoading(false);
-          return;
-        }
-
-        // 存储管理员/员工会话信息（仅用于前端路由保护）
-        const adminUserData = {
-          email: userData.email,
-          role: userData.role,
-        };
-        localStorage.setItem("adminUser", JSON.stringify(adminUserData));
-        
-        router.push("/admin/dashboard");
-        router.refresh();
-      } else {
-        // 登录失败
-        const errorData = await response.json().catch(() => ({}));
-        setError(errorData.message || "Invalid email or password");
+      // 验证用户角色是否为管理员或员工
+      const userRole = authData.user?.role?.toUpperCase();
+      if (userRole !== "ADMIN" && userRole !== "EMPLOYEE") {
+        setError("This account is not authorized to access the admin portal.");
+        setLoading(false);
+        return;
       }
+
+      // 保存 tokens
+      if (authData.accessToken && authData.refreshToken) {
+        setTokens(authData.accessToken, authData.refreshToken);
+      }
+
+      // 存储管理员/员工会话信息（仅用于前端路由保护）
+      const adminUserData = {
+        email: authData.user?.email || email.trim(),
+        role: authData.user?.role || "",
+      };
+      localStorage.setItem("adminUser", JSON.stringify(adminUserData));
+
+      router.push("/admin/dashboard");
+      router.refresh();
     } catch (err) {
       console.error("Admin login error:", err);
-      // 检查是否是网络错误
-      if (err instanceof TypeError && err.message === "Failed to fetch") {
-        setError("Unable to connect to server. Please check your internet connection or try again later.");
+      if (err instanceof Error) {
+        setError(err.message);
       } else {
         setError("An error occurred. Please try again.");
       }

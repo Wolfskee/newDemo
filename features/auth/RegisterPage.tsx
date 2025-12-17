@@ -10,7 +10,8 @@ import {
   Button,
   Link,
 } from "@nextui-org/react";
-import { apiUrl } from "@/lib/api-config";
+import { apiPost } from "@/lib/api-client";
+import { AuthResponse } from "@/types/api";
 
 export default function RegisterPage() {
   const [username, setUsername] = useState("");
@@ -55,38 +56,33 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      const response = await fetch(apiUrl("auth/register"), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+      const authData: AuthResponse = await apiPost<AuthResponse>(
+        "auth/register",
+        {
           username: username.trim(),
           email: email.trim(),
           password: password,
           role: "CUSTOMER",
           phone: phone.trim(),
-        }),
-      });
+        },
+        { skipAuth: true }
+      );
 
-      if (response.status === 201) {
-        // 注册成功
+      // 注册成功，保存 tokens（如果需要自动登录）
+      if (authData.accessToken && authData.refreshToken) {
+        // 可以选择自动登录或跳转到登录页
+        // 这里选择跳转到登录页，让用户手动登录
         router.push("/login");
         router.refresh();
-      } else if (response.status === 401) {
-        // 注册失败
-        const errorData = await response.json().catch(() => ({}));
-        setError(errorData.message || "Registration failed. Please try again.");
       } else {
-        // 其他错误
-        const errorData = await response.json().catch(() => ({}));
-        setError(errorData.message || "An error occurred. Please try again.");
+        // 如果没有返回 tokens，也跳转到登录页
+        router.push("/login");
+        router.refresh();
       }
     } catch (err) {
       console.error("Registration error:", err);
-      // 检查是否是网络错误
-      if (err instanceof TypeError && err.message === "Failed to fetch") {
-        setError("Unable to connect to server. Please check your internet connection or try again later.");
+      if (err instanceof Error) {
+        setError(err.message);
       } else {
         setError("An error occurred. Please try again.");
       }

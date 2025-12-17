@@ -16,7 +16,7 @@ import {
   Select,
   SelectItem,
 } from "@nextui-org/react";
-import { apiUrl } from "@/lib/api-config";
+import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api-client";
 import { Item, ItemListResponse } from "@/types/api";
 import ProductsTableCard from "./components/ProductsTableCard";
 
@@ -49,13 +49,7 @@ export default function ManageProductsPage() {
 
   const fetchProducts = async () => {
     try {
-      const response = await fetch(apiUrl("item"));
-      
-      if (!response.ok) {
-        throw new Error("Failed to fetch products");
-      }
-
-      const data: ItemListResponse = await response.json();
+      const data: ItemListResponse = await apiGet<ItemListResponse>("item");
       // 只获取 products (duration === 0 或未定义)
       const productItems = (data.items || []).filter(
         (item) => !item.duration || item.duration === 0
@@ -105,11 +99,6 @@ export default function ManageProductsPage() {
 
     setIsSubmitting(true);
     try {
-      const url = editingProduct 
-        ? apiUrl(`item/${editingProduct.id}`)
-        : apiUrl("item");
-      const method = editingProduct ? "PUT" : "POST";
-      
       const body = {
         name: formData.name,
         description: formData.description,
@@ -120,35 +109,28 @@ export default function ManageProductsPage() {
         imageUrl: formData.imageUrl,
       };
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      });
-
-      if (response.status === 201) {
-        await fetchProducts();
-        onOpenChange();
-        setFormData({
-          name: "",
-          description: "",
-          price: "",
-          duration: "0",
-          category: "",
-          status: "ACTIVE",
-          imageUrl: "",
-        });
-        setImagePreview("");
-        setEditingProduct(null);
+      if (editingProduct) {
+        await apiPut(`item/${editingProduct.id}`, body);
       } else {
-        const errorData = await response.json().catch(() => ({}));
-        alert(errorData.message || "Failed to save product");
+        await apiPost("item", body);
       }
+
+      await fetchProducts();
+      onOpenChange();
+      setFormData({
+        name: "",
+        description: "",
+        price: "",
+        duration: "0",
+        category: "",
+        status: "ACTIVE",
+        imageUrl: "",
+      });
+      setImagePreview("");
+      setEditingProduct(null);
     } catch (error) {
       console.error("Error saving product:", error);
-      alert("Failed to save product");
+      alert(error instanceof Error ? error.message : "Failed to save product");
     } finally {
       setIsSubmitting(false);
     }
@@ -160,19 +142,11 @@ export default function ManageProductsPage() {
     }
 
     try {
-      const response = await fetch(apiUrl(`item/${id}`), {
-        method: "DELETE",
-      });
-
-      if (response.status === 201) {
-        await fetchProducts();
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        alert(errorData.message || "Failed to delete product");
-      }
+      await apiDelete(`item/${id}`);
+      await fetchProducts();
     } catch (error) {
       console.error("Error deleting product:", error);
-      alert("Failed to delete product");
+      alert(error instanceof Error ? error.message : "Failed to delete product");
     }
   };
 

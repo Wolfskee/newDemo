@@ -14,7 +14,7 @@ import {
 } from "@nextui-org/react";
 import { parseDate, CalendarDate } from "@internationalized/date";
 import { useAuth } from "@/contexts/AuthContext";
-import { apiUrl } from "@/lib/api-config";
+import { apiGet, apiPost } from "@/lib/api-client";
 import { User, UserListResponse } from "@/types/api";
 
 const timeSlots = [
@@ -54,17 +54,14 @@ export default function BookingForm({ onBookingSuccess }: BookingFormProps) {
 
   const fetchEmployees = async () => {
     try {
-      const response = await fetch(apiUrl("user"));
-      if (response.ok) {
-        const data: UserListResponse = await response.json();
-        const employeeList = (data.users || []).filter(
-          (u: User) => u.role === "EMPLOYEE" || u.role === "employee"
-        );
-        setEmployees(employeeList);
-        // 如果有员工，默认选择第一个
-        if (employeeList.length > 0 && !formData.employeeId) {
-          setFormData((prev) => ({ ...prev, employeeId: employeeList[0].id }));
-        }
+      const data: UserListResponse = await apiGet<UserListResponse>("user");
+      const employeeList = (data.users || []).filter(
+        (u: User) => u.role === "EMPLOYEE" || u.role === "employee"
+      );
+      setEmployees(employeeList);
+      // 如果有员工，默认选择第一个
+      if (employeeList.length > 0 && !formData.employeeId) {
+        setFormData((prev) => ({ ...prev, employeeId: employeeList[0].id }));
       }
     } catch (error) {
       console.error("Error fetching employees:", error);
@@ -110,32 +107,21 @@ export default function BookingForm({ onBookingSuccess }: BookingFormProps) {
         employeeId: formData.employeeId,
       };
 
-      const response = await fetch(apiUrl("appointment"), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(appointmentData),
-      });
+      await apiPost("appointment", appointmentData);
 
-      if (response.status === 201) {
-        // 成功
-        setSubmitMessage("Appointment created successfully!");
-        setFormData({
-          title: "",
-          description: "",
-          date: null,
-          time: "",
-          employeeId: employees.length > 0 ? employees[0].id : "",
-        });
-        
-        // 调用成功回调
-        if (onBookingSuccess) {
-          onBookingSuccess();
-        }
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || "Failed to create appointment");
+      // 成功
+      setSubmitMessage("Appointment created successfully!");
+      setFormData({
+        title: "",
+        description: "",
+        date: null,
+        time: "",
+        employeeId: employees.length > 0 ? employees[0].id : "",
+      });
+      
+      // 调用成功回调
+      if (onBookingSuccess) {
+        onBookingSuccess();
       }
     } catch (error) {
       console.error("Error submitting appointment:", error);

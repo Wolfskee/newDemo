@@ -98,3 +98,10 @@ export interface ItemListResponse {
   hasNextPage: boolean;
   hasPreviousPage: boolean;
 }
+
+// 认证响应接口
+export interface AuthResponse {
+  accessToken: string;
+  refreshToken: string;
+  user?: User; // 某些 API 可能同时返回用户信息
+}
