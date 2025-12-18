@@ -1,11 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardBody, CardHeader, Image } from "@nextui-org/react";
+import { useRouter } from "next/navigation";
+import { Card, CardBody, CardHeader, Image, Button } from "@nextui-org/react";
 import { apiGet } from "@/lib/api-client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Item, ItemListResponse } from "@/types/api";
 
 export default function ServicesPage() {
+  const router = useRouter();
+  const { user } = useAuth();
   const [services, setServices] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -27,6 +31,16 @@ export default function ServicesPage() {
       console.error("Error fetching services:", error);
       setError("Failed to load services. Please try again later.");
       setLoading(false);
+    }
+  };
+
+  const handleBookNow = () => {
+    if (user) {
+      // 已登录，跳转到 profile 页面的 booking form
+      router.push("/profile#booking");
+    } else {
+      // 未登录，跳转到登录页面
+      router.push("/login");
     }
   };
 
@@ -92,9 +106,13 @@ export default function ServicesPage() {
                     <span className="text-3xl font-bold text-primary">
                       ${service.price.toFixed(2)}
                     </span>
-                    <button className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-600 transition-colors">
+                    <Button
+                      color="primary"
+                      onPress={handleBookNow}
+                      className="px-6 py-2"
+                    >
                       Book Now
-                    </button>
+                    </Button>
                   </div>
                 </CardBody>
               </Card>

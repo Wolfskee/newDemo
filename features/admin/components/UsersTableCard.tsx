@@ -6,10 +6,11 @@ import { useRouter } from "next/navigation";
 
 interface UsersTableCardProps {
   users: User[];
+  onEdit: (user: User) => void;
   onDelete: (id: string) => void;
 }
 
-export default function UsersTableCard({ users, onDelete }: UsersTableCardProps) {
+export default function UsersTableCard({ users, onEdit, onDelete }: UsersTableCardProps) {
   const router = useRouter();
 
   const formatDate = (dateString: string) => {
@@ -74,14 +75,24 @@ export default function UsersTableCard({ users, onDelete }: UsersTableCardProps)
                 </TableCell>
                 <TableCell>{formatDate(user.createdAt)}</TableCell>
                 <TableCell>
-                  <Button
-                    size="sm"
-                    color="danger"
-                    variant="flat"
-                    onPress={() => onDelete(user.id)}
-                  >
-                    Delete
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      color="primary"
+                      variant="flat"
+                      onPress={() => onEdit(user)}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      size="sm"
+                      color="danger"
+                      variant="flat"
+                      onPress={() => onDelete(user.id)}
+                    >
+                      Delete
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}

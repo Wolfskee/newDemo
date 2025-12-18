@@ -7,6 +7,7 @@ import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api-client";
 import { User, UserListResponse } from "@/types/api";
 import SearchCard from "./components/SearchCard";
 import EmployeesTableCard from "./components/EmployeesTableCard";
+import { getEmployeeCredentialsEmail } from "@/lib/email-templates";
 
 interface AdminUser {
   email: string;
@@ -126,9 +127,27 @@ export default function ManageEmployeesPage() {
           { skipAuth: true }
         );
 
-        // 注册成功后，调用项目中的邮件发送功能
-        // TODO: 请替换为项目中实际的邮件发送函数
-        // 例如: sendEmployeeCredentials(formData.email, formData.username, formData.password);
+        // 发送员工凭证邮件
+        try {
+          const emailData = getEmployeeCredentialsEmail({
+            email: formData.email.trim(),
+            username: formData.username.trim(),
+            password: formData.password,
+          });
+
+          await apiPost(
+            "api/send-email",
+            {
+              to: formData.email.trim(),
+              subject: emailData.subject,
+              html: emailData.html,
+            },
+            { skipAuth: true }
+          );
+        } catch (emailError) {
+          console.error("Error sending employee credentials email:", emailError);
+          // 即使邮件发送失败，也继续执行
+        }
         
         await fetchEmployees();
         onOpenChange();

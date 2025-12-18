@@ -61,8 +61,9 @@ export default function AdminLoginPage() {
         setTokens(authData.accessToken, authData.refreshToken);
       }
 
-      // 存储管理员/员工会话信息（仅用于前端路由保护）
+      // 存储管理员/员工会话信息（包括 id，用于获取 appointment）
       const adminUserData = {
+        id: authData.user?.id || "",
         email: authData.user?.email || email.trim(),
         role: authData.user?.role || "",
       };

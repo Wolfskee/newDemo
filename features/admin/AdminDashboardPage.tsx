@@ -6,13 +6,15 @@ import { Button } from "@nextui-org/react";
 import StatsCard from "./components/StatsCard";
 import RecentOrdersCard from "./components/RecentOrdersCard";
 import QuickActionsCard from "./components/QuickActionsCard";
+import BookingCalendar from "@/components/BookingCalendar";
 import { apiGet } from "@/lib/api-client";
 import { clearTokens } from "@/lib/api-client";
-import { ItemListResponse } from "@/types/api";
+import { ItemListResponse, AppointmentListResponse, Appointment, UserListResponse } from "@/types/api";
 
 interface AdminUser {
+  id: string;
   email: string;
-  role: string; // 改为 string 以支持 "ADMIN" 或 "admin"
+  role: string;
 }
 
 export default function AdminDashboardPage() {
@@ -24,14 +26,21 @@ export default function AdminDashboardPage() {
     { label: "Orders Today", value: "0", color: "warning" },
   ]);
   const [loading, setLoading] = useState(true);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
   const router = useRouter();
 
   useEffect(() => {
     // Check for admin session
     const stored = localStorage.getItem("adminUser");
     if (stored) {
-      setAdminUser(JSON.parse(stored));
+      const user = JSON.parse(stored);
+      setAdminUser(user);
       fetchStats();
+      
+      // 如果是 employee，获取 appointment
+      if (user.role === "EMPLOYEE" || user.role === "employee") {
+        fetchAppointments(user.id);
+      }
     } else {
       router.push("/admin");
     }
@@ -39,24 +48,32 @@ export default function AdminDashboardPage() {
 
   const fetchStats = async () => {
     try {
-      // 使用 apiGet 自动包含 JWT token
-      const data: ItemListResponse = await apiGet<ItemListResponse>("item");
+      // 并行获取 items 和 users 数据
+      const [itemsData, usersData] = await Promise.all([
+        apiGet<ItemListResponse>("item"),
+        apiGet<UserListResponse>("user"),
+      ]);
       
-      const totalItems = data.total || 0;
+      const totalItems = itemsData.total || 0;
       
       // 计算 products 数量（duration === 0 或未定义）
-      const productsCount = (data.items || []).filter(
+      const productsCount = (itemsData.items || []).filter(
         (item) => !item.duration || item.duration === 0
       ).length;
       
       // 计算 services 数量（total - products）
       const servicesCount = totalItems - productsCount;
 
+      // 计算 CUSTOMER 用户数量
+      const customersCount = (usersData.users || []).filter(
+        (user) => user.role === "CUSTOMER" || user.role === "customer"
+      ).length;
+
       // 更新 stats
       setStats([
         { label: "Total Products", value: productsCount.toString(), color: "primary" },
         { label: "Total Services", value: servicesCount.toString(), color: "secondary" },
-        { label: "Active Users", value: "0", color: "success" }, // 暂时保持为 0，可以后续连接用户 API
+        { label: "Active Users", value: customersCount.toString(), color: "success" },
         { label: "Orders Today", value: "0", color: "warning" }, // 暂时保持为 0，可以后续连接订单 API
       ]);
       
@@ -64,6 +81,19 @@ export default function AdminDashboardPage() {
     } catch (error) {
       console.error("Error fetching stats:", error);
       setLoading(false);
+    }
+  };
+
+  const fetchAppointments = async (employeeId: string) => {
+    try {
+      const data: AppointmentListResponse = await apiGet<AppointmentListResponse>("appointment");
+      // 过滤出当前 employee 的 appointment
+      const employeeAppointments = (data.appointments || []).filter(
+        (apt) => apt.employeeId === employeeId
+      );
+      setAppointments(employeeAppointments);
+    } catch (error) {
+      console.error("Error fetching appointments:", error);
     }
   };
 
@@ -81,6 +111,8 @@ export default function AdminDashboardPage() {
     );
   }
 
+  const isEmployee = adminUser.role === "EMPLOYEE" || adminUser.role === "employee";
+
   const recentOrders = [
     { id: 1, customer: "John Doe", product: "Premium Product 1", status: "Completed", date: "2024-01-15" },
     { id: 2, customer: "Jane Smith", product: "Premium Product 2", status: "Pending", date: "2024-01-15" },
@@ -93,7 +125,7 @@ export default function AdminDashboardPage() {
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-4xl font-bold text-gray-900 dark:text-white">
-              Admin Dashboard
+              {isEmployee ? "Employee Dashboard" : "Admin Dashboard"}
             </h1>
             <p className="text-gray-600 dark:text-gray-400 mt-2">
               Welcome, {adminUser.email} ({adminUser.role})
@@ -124,10 +156,20 @@ export default function AdminDashboardPage() {
           ))}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           <RecentOrdersCard orders={recentOrders} />
           <QuickActionsCard adminUser={adminUser} />
         </div>
+
+        {/* My Appointments Section - 仅对 employee 显示 */}
+        {isEmployee && (
+          <div className="mt-8">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+              My Appointments
+            </h2>
+            <BookingCalendar appointments={appointments} />
+          </div>
+        )}
       </div>
     </div>
   );

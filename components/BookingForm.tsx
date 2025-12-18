@@ -5,7 +5,6 @@ import {
   Card,
   CardBody,
   CardHeader,
-  Input,
   Textarea,
   Select,
   SelectItem,
@@ -15,7 +14,8 @@ import {
 import { parseDate, CalendarDate } from "@internationalized/date";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiGet, apiPost } from "@/lib/api-client";
-import { User, UserListResponse } from "@/types/api";
+import { User, UserListResponse, Item, ItemListResponse } from "@/types/api";
+import { getAppointmentConfirmationEmail } from "@/lib/email-templates";
 
 const timeSlots = [
   "09:00",
@@ -43,13 +43,15 @@ export default function BookingForm({ onBookingSuccess }: BookingFormProps) {
     employeeId: "",
   });
   const [employees, setEmployees] = useState<User[]>([]);
+  const [services, setServices] = useState<Item[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
-  // 获取员工列表
+  // 获取员工列表和服务列表
   useEffect(() => {
     fetchEmployees();
+    fetchServices();
   }, []);
 
   const fetchEmployees = async () => {
@@ -65,6 +67,52 @@ export default function BookingForm({ onBookingSuccess }: BookingFormProps) {
       }
     } catch (error) {
       console.error("Error fetching employees:", error);
+    }
+  };
+
+  const fetchServices = async () => {
+    try {
+      const data: ItemListResponse = await apiGet<ItemListResponse>("item");
+      // 只获取 services (duration > 0 且状态为 ACTIVE)
+      const serviceItems = (data.items || []).filter(
+        (item) => item.duration && item.duration > 0 && (!item.status || item.status === "ACTIVE")
+      );
+      setServices(serviceItems);
+      // 如果有服务，默认选择第一个
+      if (serviceItems.length > 0 && !formData.title) {
+        setFormData((prev) => ({ ...prev, title: serviceItems[0].name }));
+      }
+    } catch (error) {
+      console.error("Error fetching services:", error);
+    }
+  };
+
+  const sendAppointmentEmail = async (appointmentData: any, employee: User | undefined) => {
+    try {
+      const formattedDate = formData.date
+        ? `${formData.date.year}-${String(formData.date.month).padStart(2, "0")}-${String(formData.date.day).padStart(2, "0")}`
+        : "";
+      
+      const emailData = getAppointmentConfirmationEmail({
+        email: user?.email || "",
+        title: appointmentData.title,
+        date: appointmentData.date,
+        time: formData.time,
+        employeeName: employee?.username || employee?.email,
+      });
+
+      await apiPost(
+        "api/send-email",
+        {
+          to: user?.email,
+          subject: emailData.subject,
+          html: emailData.html,
+        },
+        { skipAuth: true }
+      );
+    } catch (error) {
+      console.error("Error sending appointment confirmation email:", error);
+      // 不阻止表单提交，即使邮件发送失败
     }
   };
 
@@ -109,10 +157,14 @@ export default function BookingForm({ onBookingSuccess }: BookingFormProps) {
 
       await apiPost("appointment", appointmentData);
 
+      // 发送确认邮件
+      const selectedEmployee = employees.find((emp) => emp.id === formData.employeeId);
+      await sendAppointmentEmail(appointmentData, selectedEmployee);
+
       // 成功
-      setSubmitMessage("Appointment created successfully!");
+      setSubmitMessage("Appointment created successfully! A confirmation email has been sent.");
       setFormData({
-        title: "",
+        title: services.length > 0 ? services[0].name : "",
         description: "",
         date: null,
         time: "",
@@ -142,16 +194,25 @@ export default function BookingForm({ onBookingSuccess }: BookingFormProps) {
       </CardHeader>
       <CardBody>
         <form onSubmit={handleSubmit} className="space-y-6">
-          <Input
-            label="Title"
-            placeholder="Enter appointment title"
-            value={formData.title}
-            onChange={(e) =>
-              setFormData({ ...formData, title: e.target.value })
-            }
+          <Select
+            label="Select Service"
+            placeholder={services.length === 0 ? "No services available" : "Choose a service"}
+            selectedKeys={formData.title ? [formData.title] : []}
+            onSelectionChange={(keys) => {
+              const selected = Array.from(keys)[0] as string;
+              setFormData({ ...formData, title: selected });
+            }}
             isRequired
+            isDisabled={services.length === 0}
             fullWidth
-          />
+            description={services.length === 0 ? "No services available at the moment" : undefined}
+          >
+            {services.map((service) => (
+              <SelectItem key={service.name} value={service.name}>
+                {service.name}
+              </SelectItem>
+            ))}
+          </Select>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <DatePicker
