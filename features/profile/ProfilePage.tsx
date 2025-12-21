@@ -9,7 +9,7 @@ import {
   Avatar,
   Button,
   Divider,
-} from "@nextui-org/react";
+} from "@heroui/react";
 import { useAuth } from "@/contexts/AuthContext";
 import BookingCalendar from "@/components/BookingCalendar";
 import BookingForm from "@/components/BookingForm";

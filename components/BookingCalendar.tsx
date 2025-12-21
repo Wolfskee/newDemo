@@ -7,7 +7,7 @@ import {
   CardHeader,
   Button,
   Chip,
-} from "@nextui-org/react";
+} from "@heroui/react";
 import {
   format,
   startOfMonth,

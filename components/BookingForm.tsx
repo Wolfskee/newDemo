@@ -10,7 +10,7 @@ import {
   SelectItem,
   Button,
   DatePicker,
-} from "@nextui-org/react";
+} from "@heroui/react";
 import { parseDate, CalendarDate } from "@internationalized/date";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiGet, apiPost } from "@/lib/api-client";
@@ -208,7 +208,7 @@ export default function BookingForm({ onBookingSuccess }: BookingFormProps) {
             description={services.length === 0 ? "No services available at the moment" : undefined}
           >
             {services.map((service) => (
-              <SelectItem key={service.name} value={service.name}>
+              <SelectItem key={service.name}>
                 {service.name}
               </SelectItem>
             ))}
@@ -235,7 +235,7 @@ export default function BookingForm({ onBookingSuccess }: BookingFormProps) {
               fullWidth
             >
               {timeSlots.map((time) => (
-                <SelectItem key={time} value={time}>
+                <SelectItem key={time}>
                   {time}
                 </SelectItem>
               ))}
@@ -254,7 +254,7 @@ export default function BookingForm({ onBookingSuccess }: BookingFormProps) {
             fullWidth
           >
             {employees.map((employee) => (
-              <SelectItem key={employee.id} value={employee.id}>
+              <SelectItem key={employee.id}>
                 {employee.username || employee.email}
               </SelectItem>
             ))}

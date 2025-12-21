@@ -15,7 +15,7 @@ import {
   Image,
   Select,
   SelectItem,
-} from "@nextui-org/react";
+} from "@heroui/react";
 import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api-client";
 import { Item, ItemListResponse } from "@/types/api";
 import ProductsTableCard from "./components/ProductsTableCard";
@@ -267,10 +267,10 @@ export default function ManageProductsPage() {
                       }}
                       fullWidth
                     >
-                      <SelectItem key="ACTIVE" value="ACTIVE">
+                      <SelectItem key="ACTIVE">
                         ACTIVE
                       </SelectItem>
-                      <SelectItem key="INACTIVE" value="INACTIVE">
+                      <SelectItem key="INACTIVE">
                         INACTIVE
                       </SelectItem>
                     </Select>

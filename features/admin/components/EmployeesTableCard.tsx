@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, CardBody, CardHeader, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Chip, Button } from "@nextui-org/react";
+import { Card, CardBody, CardHeader, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Chip, Button } from "@heroui/react";
 import { User } from "@/types/api";
 import { useRouter } from "next/navigation";
 

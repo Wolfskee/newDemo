@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, CardBody, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Image, Button } from "@nextui-org/react";
+import { Card, CardBody, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Image, Button } from "@heroui/react";
 import { Item } from "@/types/api";
 
 interface ServicesTableCardProps {

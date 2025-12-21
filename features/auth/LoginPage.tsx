@@ -9,7 +9,7 @@ import {
   Input,
   Button,
   Link,
-} from "@nextui-org/react";
+} from "@heroui/react";
 import { apiPost } from "@/lib/api-client";
 import { useAuth } from "@/contexts/AuthContext";
 import { User, AuthResponse } from "@/types/api";

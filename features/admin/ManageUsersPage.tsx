@@ -13,7 +13,7 @@ import {
   Select, 
   SelectItem,
   useDisclosure 
-} from "@nextui-org/react";
+} from "@heroui/react";
 import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api-client";
 import { User, UserListResponse } from "@/types/api";
 import SearchCard from "./components/SearchCard";
@@ -287,13 +287,13 @@ export default function ManageUsersPage() {
                       isRequired
                       fullWidth
                     >
-                      <SelectItem key="CUSTOMER" value="CUSTOMER">
+                      <SelectItem key="CUSTOMER">
                         CUSTOMER
                       </SelectItem>
-                      <SelectItem key="ADMIN" value="ADMIN">
+                      <SelectItem key="ADMIN">
                         ADMIN
                       </SelectItem>
-                      <SelectItem key="EMPLOYEE" value="EMPLOYEE">
+                      <SelectItem key="EMPLOYEE">
                         EMPLOYEE
                       </SelectItem>
                     </Select>

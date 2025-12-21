@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, CardBody, CardHeader, Button } from "@nextui-org/react";
+import { Card, CardBody, CardHeader, Button } from "@heroui/react";
 import { useRouter } from "next/navigation";
 
 interface AdminUser {

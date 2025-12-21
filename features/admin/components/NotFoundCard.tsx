@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, CardBody, Button } from "@nextui-org/react";
+import { Card, CardBody, Button } from "@heroui/react";
 
 interface NotFoundCardProps {
   message: string;

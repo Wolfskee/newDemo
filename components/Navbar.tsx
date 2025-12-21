@@ -12,7 +12,7 @@ import {
   DropdownMenu,
   DropdownItem,
   Badge,
-} from "@nextui-org/react";
+} from "@heroui/react";
 import NextLink from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";

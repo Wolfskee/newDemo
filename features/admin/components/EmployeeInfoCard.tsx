@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, CardBody, Avatar, Chip } from "@nextui-org/react";
+import { Card, CardBody, Avatar, Chip } from "@heroui/react";
 import { User } from "@/types/api";
 
 interface EmployeeInfoCardProps {

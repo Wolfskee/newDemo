@@ -1,7 +1,7 @@
 "use client";
 
-import { Card, CardBody } from "@nextui-org/react";
-import { Input } from "@nextui-org/react";
+import { Card, CardBody } from "@heroui/react";
+import { Input } from "@heroui/react";
 
 interface SearchCardProps {
   placeholder: string;

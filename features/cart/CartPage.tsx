@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Card, CardBody, CardHeader, Button, Image, Input } from "@nextui-org/react";
+import { Card, CardBody, CardHeader, Button, Image, Input } from "@heroui/react";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 

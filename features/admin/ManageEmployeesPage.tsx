@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Input, useDisclosure } from "@nextui-org/react";
+import { Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Input, useDisclosure } from "@heroui/react";
 import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api-client";
 import { User, UserListResponse } from "@/types/api";
 import SearchCard from "./components/SearchCard";

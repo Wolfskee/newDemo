@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, CardBody, CardHeader, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Chip } from "@nextui-org/react";
+import { Card, CardBody, CardHeader, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Chip } from "@heroui/react";
 import { Appointment } from "@/types/api";
 import { format, parseISO } from "date-fns";
 

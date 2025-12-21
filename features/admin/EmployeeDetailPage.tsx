@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { Button } from "@nextui-org/react";
+import { Button } from "@heroui/react";
 import { apiUrl } from "@/lib/api-config";
 import { User, UserListResponse, Appointment, AppointmentListResponse } from "@/types/api";
 import NotFoundCard from "./components/NotFoundCard";

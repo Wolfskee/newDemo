@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@nextui-org/react";
+import { Button } from "@heroui/react";
 import StatsCard from "./components/StatsCard";
 import RecentOrdersCard from "./components/RecentOrdersCard";
 import QuickActionsCard from "./components/QuickActionsCard";

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Card, CardBody, CardHeader, Image, Button } from "@nextui-org/react";
+import { Card, CardBody, CardHeader, Image, Button } from "@heroui/react";
 import { apiGet } from "@/lib/api-client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Item, ItemListResponse } from "@/types/api";
