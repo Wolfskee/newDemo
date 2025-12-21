@@ -12,6 +12,15 @@ export interface Item {
   updatedAt: string;
 }
 
+export interface FlyingItem {
+  id: string;
+  product: Item;
+  startX: number;
+  startY: number;
+  endX: number;
+  endY: number;
+}
+
 // 产品接口（duration === 0 的 Item）
 export interface Product extends Item {
   // Product 特有字段可以在这里添加

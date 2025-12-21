@@ -4,16 +4,8 @@ import { useEffect, useState } from "react";
 import { Card, CardBody, CardHeader, Image } from "@heroui/react";
 import Link from "next/link";
 import { apiUrl } from "@/lib/api-config";
+import { Product } from "@/types/Product";
 
-interface Product {
-  id: string;
-  name: string;
-  description: string;
-  price: string;
-  image: string;
-  createdAt: string;
-  updatedAt: string;
-}
 
 export default function ProductsSection() {
   const [products, setProducts] = useState<Product[]>([]);
