@@ -1,18 +1,16 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-
-interface User {
-  email: string;
-  role?: "user" | "admin" | "employee";
-}
+import { User } from "@/types/api";
+import { setTokens, clearTokens, getAccessToken } from "@/lib/api-client";
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<boolean>;
-  register: (email: string, password: string) => Promise<boolean>;
+  setUser: (user: User | null) => void;
+  setAuthTokens: (accessToken: string, refreshToken: string) => void;
   logout: () => void;
   loading: boolean;
+  isAuthenticated: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -20,49 +18,51 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+  // 检查是否有 token（用于判断是否已登录）
   useEffect(() => {
-    // Check for stored user session
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
+    const token = getAccessToken();
+    setIsAuthenticated(!!token);
     setLoading(false);
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
-    // Simulate API call - in production, this would be a real API endpoint
-    // For demo purposes, we'll accept any email/password combination
-    const userData: User = {
-      email,
-      role: "user",
+  // 监听登出事件
+  useEffect(() => {
+    const handleLogout = () => {
+      setUser(null);
+      clearTokens();
+      setIsAuthenticated(false);
     };
-    setUser(userData);
-    localStorage.setItem("user", JSON.stringify(userData));
-    return true;
-  };
 
-  const register = async (
-    email: string,
-    password: string
-  ): Promise<boolean> => {
-    // Simulate API call
-    const userData: User = {
-      email,
-      role: "user",
+    window.addEventListener("auth:logout", handleLogout);
+    return () => {
+      window.removeEventListener("auth:logout", handleLogout);
     };
-    setUser(userData);
-    localStorage.setItem("user", JSON.stringify(userData));
-    return true;
+  }, []);
+
+  const setAuthTokens = (accessToken: string, refreshToken: string) => {
+    setTokens(accessToken, refreshToken);
+    setIsAuthenticated(true);
   };
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem("user");
+    clearTokens();
+    setIsAuthenticated(false);
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, loading }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        setUser,
+        setAuthTokens,
+        logout,
+        loading,
+        isAuthenticated,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

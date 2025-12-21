@@ -1,18 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardBody, CardHeader, Image } from "@nextui-org/react";
+import { Card, CardBody, CardHeader, Image } from "@heroui/react";
 import Link from "next/link";
+import { apiUrl } from "@/lib/api-config";
+import { Product } from "@/types/Product";
 
-interface Product {
-  id: string;
-  name: string;
-  description: string;
-  price: string;
-  image: string;
-  createdAt: string;
-  updatedAt: string;
-}
 
 export default function ProductsSection() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -23,7 +16,7 @@ export default function ProductsSection() {
 
   const fetchProducts = async () => {
     try {
-      const response = await fetch("/api/products");
+      const response = await fetch(apiUrl("api/products"));
       const data = await response.json();
       if (data.success) {
         // Show only first 3 products on homepage

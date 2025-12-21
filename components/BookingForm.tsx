@@ -5,33 +5,28 @@ import {
   Card,
   CardBody,
   CardHeader,
-  Input,
   Textarea,
   Select,
   SelectItem,
   Button,
   DatePicker,
-} from "@nextui-org/react";
+} from "@heroui/react";
 import { parseDate, CalendarDate } from "@internationalized/date";
 import { useAuth } from "@/contexts/AuthContext";
+import { apiGet, apiPost } from "@/lib/api-client";
+import { User, UserListResponse, Item, ItemListResponse } from "@/types/api";
+import { getAppointmentConfirmationEmail } from "@/lib/email-templates";
 
 const timeSlots = [
-  "09:00 AM",
-  "10:00 AM",
-  "11:00 AM",
-  "12:00 PM",
-  "01:00 PM",
-  "02:00 PM",
-  "03:00 PM",
-  "04:00 PM",
-  "05:00 PM",
-];
-
-const services = [
-  "Consulting Services",
-  "Technical Support",
-  "Custom Solutions",
-  "Training & Education",
+  "09:00",
+  "10:00",
+  "11:00",
+  "12:00",
+  "13:00",
+  "14:00",
+  "15:00",
+  "16:00",
+  "17:00",
 ];
 
 interface BookingFormProps {
@@ -41,26 +36,85 @@ interface BookingFormProps {
 export default function BookingForm({ onBookingSuccess }: BookingFormProps) {
   const { user } = useAuth();
   const [formData, setFormData] = useState({
-    name: "",
-    email: "",
+    title: "",
+    description: "",
     date: null as CalendarDate | null,
     time: "",
-    service: "",
-    description: "",
+    employeeId: "",
   });
+  const [employees, setEmployees] = useState<User[]>([]);
+  const [services, setServices] = useState<Item[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
-  // Auto-fill email if user is logged in
+  // 获取员工列表和服务列表
   useEffect(() => {
-    if (user?.email) {
-      setFormData((prev) => ({
-        ...prev,
-        email: user.email || "",
-      }));
+    fetchEmployees();
+    fetchServices();
+  }, []);
+
+  const fetchEmployees = async () => {
+    try {
+      const data: UserListResponse = await apiGet<UserListResponse>("user");
+      const employeeList = (data.users || []).filter(
+        (u: User) => u.role === "EMPLOYEE" || u.role === "employee"
+      );
+      setEmployees(employeeList);
+      // 如果有员工，默认选择第一个
+      if (employeeList.length > 0 && !formData.employeeId) {
+        setFormData((prev) => ({ ...prev, employeeId: employeeList[0].id }));
+      }
+    } catch (error) {
+      console.error("Error fetching employees:", error);
     }
-  }, [user]);
+  };
+
+  const fetchServices = async () => {
+    try {
+      const data: ItemListResponse = await apiGet<ItemListResponse>("item");
+      // 只获取 services (duration > 0 且状态为 ACTIVE)
+      const serviceItems = (data.items || []).filter(
+        (item) => item.duration && item.duration > 0 && (!item.status || item.status === "ACTIVE")
+      );
+      setServices(serviceItems);
+      // 如果有服务，默认选择第一个
+      if (serviceItems.length > 0 && !formData.title) {
+        setFormData((prev) => ({ ...prev, title: serviceItems[0].name }));
+      }
+    } catch (error) {
+      console.error("Error fetching services:", error);
+    }
+  };
+
+  const sendAppointmentEmail = async (appointmentData: any, employee: User | undefined) => {
+    try {
+      const formattedDate = formData.date
+        ? `${formData.date.year}-${String(formData.date.month).padStart(2, "0")}-${String(formData.date.day).padStart(2, "0")}`
+        : "";
+      
+      const emailData = getAppointmentConfirmationEmail({
+        email: user?.email || "",
+        title: appointmentData.title,
+        date: appointmentData.date,
+        time: formData.time,
+        employeeName: employee?.username || employee?.email,
+      });
+
+      await apiPost(
+        "api/send-email",
+        {
+          to: user?.email,
+          subject: emailData.subject,
+          html: emailData.html,
+        },
+        { skipAuth: true }
+      );
+    } catch (error) {
+      console.error("Error sending appointment confirmation email:", error);
+      // 不阻止表单提交，即使邮件发送失败
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,63 +122,65 @@ export default function BookingForm({ onBookingSuccess }: BookingFormProps) {
     setSubmitMessage("");
     setErrorMessage("");
 
-    // Validate form
-    if (!formData.name || !formData.email || !formData.date || !formData.time || !formData.service) {
+    // 验证表单
+    if (!formData.title || !formData.date || !formData.time || !formData.employeeId) {
       setErrorMessage("Please fill in all required fields");
       setIsSubmitting(false);
       return;
     }
 
+    if (!user?.id) {
+      setErrorMessage("Please login to make an appointment");
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
-      // Format date for API
+      // 组合日期和时间为 ISO 格式
       const dateString = formData.date
         ? `${formData.date.year}-${String(formData.date.month).padStart(2, "0")}-${String(formData.date.day).padStart(2, "0")}`
         : "";
+      
+      // 将时间转换为 24 小时格式
+      const [hours, minutes] = formData.time.split(":");
+      const dateTime = new Date(`${dateString}T${hours}:${minutes}:00`);
+      const isoDateTime = dateTime.toISOString();
 
-      const bookingData = {
-        name: formData.name,
-        email: formData.email,
-        date: dateString,
-        time: formData.time,
-        service: formData.service,
+      const appointmentData = {
+        title: formData.title,
         description: formData.description || "",
+        date: isoDateTime,
+        status: "PENDING",
+        customerId: user.id,
+        employeeId: formData.employeeId,
       };
 
-      const response = await fetch("/api/booking", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(bookingData),
-      });
+      await apiPost("appointment", appointmentData);
 
-      const data = await response.json();
+      // 发送确认邮件
+      const selectedEmployee = employees.find((emp) => emp.id === formData.employeeId);
+      await sendAppointmentEmail(appointmentData, selectedEmployee);
 
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to submit booking");
-      }
-
-      // Success
-      setSubmitMessage(data.message || "Booking request submitted successfully! We'll contact you soon.");
+      // 成功
+      setSubmitMessage("Appointment created successfully! A confirmation email has been sent.");
       setFormData({
-        name: "",
-        email: user?.email || "",
+        title: services.length > 0 ? services[0].name : "",
+        description: "",
         date: null,
         time: "",
-        service: "",
-        description: "",
+        employeeId: employees.length > 0 ? employees[0].id : "",
       });
       
-      // Call success callback if provided
+      // 调用成功回调
       if (onBookingSuccess) {
         onBookingSuccess();
       }
     } catch (error) {
-      console.error("Error submitting booking:", error);
+      console.error("Error submitting appointment:", error);
       setErrorMessage(
         error instanceof Error
           ? error.message
-          : "Failed to submit booking request. Please try again."
+          : "Failed to submit appointment request. Please try again."
       );
     } finally {
       setIsSubmitting(false);
@@ -132,123 +188,117 @@ export default function BookingForm({ onBookingSuccess }: BookingFormProps) {
   };
 
   return (
-        <Card>
-          <CardHeader className="pb-4">
-            <h3 className="text-2xl font-semibold">Book a Service</h3>
-          </CardHeader>
-          <CardBody>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
-                  label="Name"
-                  placeholder="Enter your full name"
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                  isRequired
-                  fullWidth
-                />
-                <Input
-                  label="Email"
-                  type="email"
-                  placeholder="Enter your email"
-                  value={formData.email}
-                  onChange={(e) =>
-                    setFormData({ ...formData, email: e.target.value })
-                  }
-                  isRequired
-                  fullWidth
-                  isReadOnly={!!user?.email}
-                  description={user?.email ? "Email from your account" : undefined}
-                />
-              </div>
+    <Card>
+      <CardHeader className="pb-4">
+        <h3 className="text-2xl font-semibold">Book a Service</h3>
+      </CardHeader>
+      <CardBody>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <Select
+            label="Select Service"
+            placeholder={services.length === 0 ? "No services available" : "Choose a service"}
+            selectedKeys={formData.title ? [formData.title] : []}
+            onSelectionChange={(keys) => {
+              const selected = Array.from(keys)[0] as string;
+              setFormData({ ...formData, title: selected });
+            }}
+            isRequired
+            isDisabled={services.length === 0}
+            fullWidth
+            description={services.length === 0 ? "No services available at the moment" : undefined}
+          >
+            {services.map((service) => (
+              <SelectItem key={service.name}>
+                {service.name}
+              </SelectItem>
+            ))}
+          </Select>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <DatePicker
-                  label="Select Date"
-                  value={formData.date}
-                  onChange={(date) => setFormData({ ...formData, date })}
-                  isRequired
-                  minValue={parseDate(new Date().toISOString().split("T")[0])}
-                  className="w-full"
-                />
-                <Select
-                  label="Select Time"
-                  placeholder="Choose a time slot"
-                  selectedKeys={formData.time ? [formData.time] : []}
-                  onSelectionChange={(keys) => {
-                    const selected = Array.from(keys)[0] as string;
-                    setFormData({ ...formData, time: selected });
-                  }}
-                  isRequired
-                  fullWidth
-                >
-                  {timeSlots.map((time) => (
-                    <SelectItem key={time} value={time}>
-                      {time}
-                    </SelectItem>
-                  ))}
-                </Select>
-              </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <DatePicker
+              label="Select Date"
+              value={formData.date}
+              onChange={(date) => setFormData({ ...formData, date })}
+              isRequired
+              minValue={parseDate(new Date().toISOString().split("T")[0])}
+              className="w-full"
+            />
+            <Select
+              label="Select Time"
+              placeholder="Choose a time slot"
+              selectedKeys={formData.time ? [formData.time] : []}
+              onSelectionChange={(keys) => {
+                const selected = Array.from(keys)[0] as string;
+                setFormData({ ...formData, time: selected });
+              }}
+              isRequired
+              fullWidth
+            >
+              {timeSlots.map((time) => (
+                <SelectItem key={time}>
+                  {time}
+                </SelectItem>
+              ))}
+            </Select>
+          </div>
 
-              <Select
-                label="Select Service"
-                placeholder="Choose a service"
-                selectedKeys={formData.service ? [formData.service] : []}
-                onSelectionChange={(keys) => {
-                  const selected = Array.from(keys)[0] as string;
-                  setFormData({ ...formData, service: selected });
-                }}
-                isRequired
-                fullWidth
-              >
-                {services.map((service) => (
-                  <SelectItem key={service} value={service}>
-                    {service}
-                  </SelectItem>
-                ))}
-              </Select>
+          <Select
+            label="Select Employee"
+            placeholder="Choose an employee"
+            selectedKeys={formData.employeeId ? [formData.employeeId] : []}
+            onSelectionChange={(keys) => {
+              const selected = Array.from(keys)[0] as string;
+              setFormData({ ...formData, employeeId: selected });
+            }}
+            isRequired
+            fullWidth
+          >
+            {employees.map((employee) => (
+              <SelectItem key={employee.id}>
+                {employee.username || employee.email}
+              </SelectItem>
+            ))}
+          </Select>
 
-              <Textarea
-                label="Description"
-                placeholder="Tell us more about your requirements..."
-                value={formData.description}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
-                minRows={4}
-                fullWidth
-              />
+          <Textarea
+            label="Description"
+            placeholder="Tell us more about your requirements..."
+            value={formData.description}
+            onChange={(e) =>
+              setFormData({ ...formData, description: e.target.value })
+            }
+            minRows={4}
+            fullWidth
+          />
 
-              {errorMessage && (
-                <div className="p-4 bg-danger-50 dark:bg-danger-900/20 border border-danger-200 dark:border-danger-800 rounded-lg">
-                  <p className="text-danger-700 dark:text-danger-400">
-                    {errorMessage}
-                  </p>
-                </div>
-              )}
+          {errorMessage && (
+            <div className="p-4 bg-danger-50 dark:bg-danger-900/20 border border-danger-200 dark:border-danger-800 rounded-lg">
+              <p className="text-danger-700 dark:text-danger-400">
+                {errorMessage}
+              </p>
+            </div>
+          )}
 
-              {submitMessage && (
-                <div className="p-4 bg-success-50 dark:bg-success-900/20 border border-success-200 dark:border-success-800 rounded-lg">
-                  <p className="text-success-700 dark:text-success-400">
-                    {submitMessage}
-                  </p>
-                </div>
-              )}
+          {submitMessage && (
+            <div className="p-4 bg-success-50 dark:bg-success-900/20 border border-success-200 dark:border-success-800 rounded-lg">
+              <p className="text-success-700 dark:text-success-400">
+                {submitMessage}
+              </p>
+            </div>
+          )}
 
-              <Button
-                type="submit"
-                color="primary"
-                size="lg"
-                fullWidth
-                isLoading={isSubmitting}
-                className="font-semibold"
-              >
-                {isSubmitting ? "Submitting..." : "Submit Booking Request"}
-              </Button>
-            </form>
-          </CardBody>
-        </Card>
+          <Button
+            type="submit"
+            color="primary"
+            size="lg"
+            fullWidth
+            isLoading={isSubmitting}
+            className="font-semibold"
+          >
+            {isSubmitting ? "Submitting..." : "Submit Appointment"}
+          </Button>
+        </form>
+      </CardBody>
+    </Card>
   );
 }

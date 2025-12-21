@@ -1,12 +1,10 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { CartProvider } from "@/contexts/CartContext";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-
-const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Our Company - Products & Services",
@@ -20,12 +18,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body>
         <Providers>
           <AuthProvider>
-            <Navbar />
-            {children}
-            <Footer />
+            <CartProvider>
+              <Navbar />
+              {children}
+              <Footer />
+            </CartProvider>
           </AuthProvider>
         </Providers>
       </body>

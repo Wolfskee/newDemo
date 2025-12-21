@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardBody } from "@nextui-org/react";
+import { Card, CardBody } from "@heroui/react";
 import Link from "next/link";
+import { apiUrl } from "@/lib/api-config";
 
 interface Service {
   id: string;
@@ -24,7 +25,7 @@ export default function ServicesSection() {
 
   const fetchServices = async () => {
     try {
-      const response = await fetch("/api/services");
+      const response = await fetch(apiUrl("api/services"));
       const data = await response.json();
       if (data.success) {
         // Show only first 3 services on homepage
