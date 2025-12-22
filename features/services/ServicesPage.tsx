@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { apiGet } from "@/lib/api-client";
-import { Item, ItemListResponse } from "@/types/api";
+import { useEffect } from "react";
+import { useServicesStore } from "./store/useServicesStore";
 import NoServicesAlert from "./components/NoServiceAlert";
 import ServicesError from "./components/ServicesError";
 import ServicesHeader from "./components/ServiceHeader";
@@ -11,48 +10,31 @@ import ServicesLoadingSkeleton from "./components/ServicesLoadingSkeleton";
 import { useHandleBookNow } from "./hooks/useHandleBookNow";
 
 export default function ServicesPage() {
-  const [services, setServices] = useState<Service[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  // 使用 services store
+  const services = useServicesStore((state) => state.services);
+  const loading = useServicesStore((state) => state.loading);
+  const error = useServicesStore((state) => state.error);
+  const fetchServices = useServicesStore((state) => state.fetchServices);
+  const getActiveServices = useServicesStore((state) => state.getActiveServices);
 
+  // Local hooks
+  const { handleBookNow } = useHandleBookNow();
+
+  // fetch services
   useEffect(() => {
     fetchServices();
-  }, []);
-
-  const fetchServices = async () => {
-    try {
-      const data: ItemListResponse = await apiGet<ItemListResponse>("item");
-      // 只显示 duration > 0 的 items（services）
-      const serviceItems = (data.items || []).filter(
-        (item) => item.duration && item.duration > 0
-      );
-      setServices(serviceItems);
-      setLoading(false);
-    } catch (error) {
-      console.error("Error fetching services:", error);
-      setError("Failed to load services. Please try again later.");
-      setLoading(false);
-    }
-  };
-
-  const { handleBookNow } = useHandleBookNow();
+  }, [fetchServices]);
 
   if (loading) {
     return <ServicesLoadingSkeleton />;
   }
 
   if (error) {
-    return (
-      <div className="min-h-screen bg-white dark:bg-gray-900 py-12 px-4 flex items-center justify-center">
-        <p className="text-red-600 dark:text-red-400">{error}</p>
-      </div>
-    );
+    return <ServicesError message={error} onRetry={fetchServices} />;
   }
 
   // 只显示状态为 ACTIVE 的服务
-  const activeServices = services.filter(
-    (service) => !service.status || service.status === "ACTIVE"
-  );
+  const activeServices = getActiveServices();
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 py-12 px-4">
@@ -65,9 +47,6 @@ export default function ServicesPage() {
             ))}
           </div>
         ) : (
-          <ServicesError message={error} onRetry={fetchServices} />
-        )}
-        {activeServices.length === 0 && (
           <NoServicesAlert />
         )}
       </div>
