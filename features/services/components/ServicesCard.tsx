@@ -37,7 +37,7 @@ export default function ServicesCard({ service, handleBookNow }: ServicesCardPro
 						color="primary"
 						onPress={() => handleBookNow(service)}
 					>
-						Add to Cart
+						Book Now
 					</Button>
 				</div>
 			</CardBody>

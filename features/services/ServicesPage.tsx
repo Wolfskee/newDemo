@@ -1,19 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { apiGet } from "@/lib/api-client";
-import { useAuth } from "@/contexts/AuthContext";
 import { Item, ItemListResponse } from "@/types/api";
 import NoServicesAlert from "./components/NoServiceAlert";
 import ServicesError from "./components/ServicesError";
 import ServicesHeader from "./components/ServiceHeader";
 import ServicesCard from "./components/ServicesCard";
+import ServicesLoadingSkeleton from "./components/ServicesLoadingSkeleton";
+import { useHandleBookNow } from "./hooks/useHandleBookNow";
 
 export default function ServicesPage() {
-  const router = useRouter();
-  const { user } = useAuth();
-  const [services, setServices] = useState<Item[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -37,22 +35,10 @@ export default function ServicesPage() {
     }
   };
 
-  const handleBookNow = () => {
-    if (user) {
-      // 已登录，跳转到 profile 页面的 booking form
-      router.push("/profile#booking");
-    } else {
-      // 未登录，跳转到登录页面
-      router.push("/login");
-    }
-  };
+  const { handleBookNow } = useHandleBookNow();
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-white dark:bg-gray-900 py-12 px-4 flex items-center justify-center">
-        <p className="text-gray-600 dark:text-gray-400">Loading services...</p>
-      </div>
-    );
+    return <ServicesLoadingSkeleton />;
   }
 
   if (error) {
