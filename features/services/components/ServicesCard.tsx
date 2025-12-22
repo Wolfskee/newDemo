@@ -3,10 +3,10 @@ import { Card, CardHeader, Image, CardBody, Button } from "@heroui/react";
 
 interface ServicesCardProps {
 	service: Service;
-	handleAddToCart: (service: Service, buttonElement: HTMLElement) => void;
+	handleBookNow: (service: Service) => void;
 }
 
-export default function ServicesCard({ service, handleAddToCart }: ServicesCardProps) {
+export default function ServicesCard({ service, handleBookNow }: ServicesCardProps) {
 
 	return (
 		<Card key={service.id} className="hover:shadow-xl transition-shadow">
@@ -35,7 +35,7 @@ export default function ServicesCard({ service, handleAddToCart }: ServicesCardP
 					</span>
 					<Button
 						color="primary"
-						onPress={() => handleAddToCart(service, document.activeElement as HTMLElement)}
+						onPress={() => handleBookNow(service)}
 					>
 						Add to Cart
 					</Button>

@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Card, CardBody, CardHeader, Image, Button } from "@heroui/react";
 import { apiGet } from "@/lib/api-client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Item, ItemListResponse } from "@/types/api";
 import NoServicesAlert from "./components/NoServiceAlert";
 import ServicesError from "./components/ServicesError";
 import ServicesHeader from "./components/ServiceHeader";
+import ServicesCard from "./components/ServicesCard";
 
 export default function ServicesPage() {
   const router = useRouter();
@@ -75,45 +75,7 @@ export default function ServicesPage() {
         {activeServices.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {activeServices.map((service) => (
-              <Card key={service.id} className="hover:shadow-xl transition-shadow">
-                <CardHeader className="p-0">
-                  <Image
-                    src={service.imageUrl}
-                    alt={service.name}
-                    width="100%"
-                    height={300}
-                    className="object-cover"
-                  />
-                </CardHeader>
-                <CardBody className="p-6">
-                  <h2 className="text-2xl font-semibold mb-3">{service.name}</h2>
-                  {service.category && (
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                      {service.category}
-                    </p>
-                  )}
-                  <p className="text-gray-600 dark:text-gray-400 mb-4">
-                    {service.description}
-                  </p>
-                  {service.duration && (
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                      Duration: {service.duration} minutes
-                    </p>
-                  )}
-                  <div className="flex justify-between items-center mt-4">
-                    <span className="text-3xl font-bold text-primary">
-                      ${service.price.toFixed(2)}
-                    </span>
-                    <Button
-                      color="primary"
-                      onPress={handleBookNow}
-                      className="px-6 py-2"
-                    >
-                      Book Now
-                    </Button>
-                  </div>
-                </CardBody>
-              </Card>
+              <ServicesCard key={service.id} service={service} handleBookNow={handleBookNow} />
             ))}
           </div>
         ) : (
