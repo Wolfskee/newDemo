@@ -6,6 +6,9 @@ import { Card, CardBody, CardHeader, Image, Button } from "@heroui/react";
 import { apiGet } from "@/lib/api-client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Item, ItemListResponse } from "@/types/api";
+import NoServicesAlert from "./components/NoServiceAlert";
+import ServicesError from "./components/ServicesError";
+import ServicesHeader from "./components/ServiceHeader";
 
 export default function ServicesPage() {
   const router = useRouter();
@@ -68,12 +71,7 @@ export default function ServicesPage() {
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 py-12 px-4">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-5xl font-bold text-center mb-4 text-gray-900 dark:text-white">
-          Our Services
-        </h1>
-        <p className="text-center text-gray-600 dark:text-gray-400 mb-12 text-lg">
-          Explore our comprehensive range of professional services
-        </p>
+        <ServicesHeader />
         {activeServices.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {activeServices.map((service) => (
@@ -119,11 +117,10 @@ export default function ServicesPage() {
             ))}
           </div>
         ) : (
-          <div className="text-center py-12">
-            <p className="text-gray-600 dark:text-gray-400 text-lg">
-              No services available at the moment.
-            </p>
-          </div>
+          <ServicesError message={error} onRetry={fetchServices} />
+        )}
+        {activeServices.length === 0 && (
+          <NoServicesAlert />
         )}
       </div>
     </div>
