@@ -42,7 +42,7 @@ export default function ProductsPage() {
   );
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 py-12 px-4 relative">
+    <div className="min-h-screen bg-gray-900 py-12 px-4 relative">
 
       {/* flying animation */}
       <AnimatePresence>

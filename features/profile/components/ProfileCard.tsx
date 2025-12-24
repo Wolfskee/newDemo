@@ -17,8 +17,8 @@ export default function ProfileCard({ user }: ProfileCardProps) {
                     fallback="👤"
                     className="w-24 h-24 mb-4"
                 />
-                <h2 className="text-xl font-semibold mb-2">{user.email}</h2>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
+                <h2 className="text-xl font-semibold mb-2 text-white">{user.email}</h2>
+                <p className="text-sm text-gray-400">
                     {user.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : "User"}
                 </p>
             </CardBody>

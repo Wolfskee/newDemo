@@ -6,10 +6,10 @@ export default function SettingsCard() {
     return (
         <Card>
             <CardHeader>
-                <h3 className="text-xl font-semibold">Settings</h3>
+                <h3 className="text-xl font-semibold text-white">Settings</h3>
             </CardHeader>
             <CardBody>
-                <p className="text-gray-600 dark:text-gray-400">
+                <p className="text-gray-400">
                     Manage your account settings and preferences
                 </p>
                 <Button

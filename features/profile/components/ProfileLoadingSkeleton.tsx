@@ -2,7 +2,7 @@ import { Card, CardBody, CardHeader, Skeleton } from "@heroui/react";
 
 export default function ProfileLoadingSkeleton() {
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12 px-4">
+        <div className="min-h-screen bg-gray-900 py-12 px-4">
             <div className="max-w-4xl mx-auto">
                 <Skeleton className="rounded-lg mb-8">
                     <div className="h-10 w-48 rounded-lg bg-default-300"></div>

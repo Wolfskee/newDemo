@@ -9,7 +9,7 @@ export default function EmptyCartAlert() {
     return (
         <Card>
             <CardBody className="text-center py-16">
-                <p className="text-2xl text-gray-600 dark:text-gray-400 mb-4">
+                <p className="text-2xl text-gray-400 mb-4">
                     Cart is Empty
                 </p>
                 <Button

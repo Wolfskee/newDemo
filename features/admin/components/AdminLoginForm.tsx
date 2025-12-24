@@ -17,7 +17,7 @@ export default function AdminLoginForm() {
     };
 
     return (
-        <div className="flex items-center justify-center min-h-[80vh] px-4 bg-gray-50 dark:bg-gray-900">
+        <div className="flex items-center justify-center min-h-[80vh] px-4 bg-gray-900">
             <Card className="w-full max-w-md">
                 <CardHeader>
                     <AuthHeader
@@ -63,7 +63,7 @@ export default function AdminLoginForm() {
                                 href="/"
                                 variant="light"
                                 size="sm"
-                                className="text-gray-500"
+                                className="text-gray-400"
                             >
                                 ← Back to Home
                             </Button>

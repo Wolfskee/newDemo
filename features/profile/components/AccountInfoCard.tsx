@@ -12,21 +12,21 @@ export default function AccountInfoCard({ user, onLogout }: AccountInfoCardProps
     return (
         <Card className="md:col-span-2">
             <CardHeader>
-                <h3 className="text-2xl font-semibold">Account Information</h3>
+                <h3 className="text-2xl font-semibold text-white">Account Information</h3>
             </CardHeader>
             <CardBody className="space-y-4">
                 <div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
+                    <p className="text-sm text-gray-400 mb-1">
                         Email Address
                     </p>
-                    <p className="text-lg">{user.email}</p>
+                    <p className="text-lg text-white">{user.email}</p>
                 </div>
                 <Divider />
                 <div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
+                    <p className="text-sm text-gray-400 mb-1">
                         Account Type
                     </p>
-                    <p className="text-lg">
+                    <p className="text-lg text-white">
                         {user.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : "User"}
                     </p>
                 </div>
