@@ -37,7 +37,7 @@ export default function ServicesPage() {
   const activeServices = getActiveServices();
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 py-12 px-4">
+    <div className="min-h-screen bg-gray-900 py-12 px-4">
       <div className="max-w-7xl mx-auto">
         <ServicesHeader />
         {activeServices.length > 0 ? (

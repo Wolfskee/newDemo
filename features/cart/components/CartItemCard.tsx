@@ -26,9 +26,9 @@ export default function CartItemCard({ item, onUpdateQuantity, onRemove }: CartI
                         className="object-cover rounded"
                     />
                     <div className="flex-1">
-                        <h3 className="text-xl font-semibold mb-2">{item.name}</h3>
+                        <h3 className="text-xl font-semibold mb-2 text-white">{item.name}</h3>
                         {item.category && (
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                            <p className="text-sm text-gray-400 mb-2">
                                 {item.category}
                             </p>
                         )}
@@ -37,7 +37,7 @@ export default function CartItemCard({ item, onUpdateQuantity, onRemove }: CartI
                         </p>
                         <div className="flex items-center gap-4">
                             <div className="flex items-center gap-2">
-                                <label className="text-sm">Quantity:</label>
+                                <label className="text-sm text-gray-400">Quantity:</label>
                                 <Input
                                     type="number"
                                     min="1"
@@ -59,7 +59,7 @@ export default function CartItemCard({ item, onUpdateQuantity, onRemove }: CartI
                                 Remove
                             </Button>
                         </div>
-                        <p className="text-lg font-semibold mt-2">
+                        <p className="text-lg font-semibold mt-2 text-white">
                             Subtotal: ${(item.price * item.quantity).toFixed(2)}
                         </p>
                     </div>

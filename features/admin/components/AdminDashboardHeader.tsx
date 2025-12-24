@@ -21,10 +21,10 @@ export default function AdminDashboardHeader({ adminUser, onLogout }: AdminDashb
     return (
         <div className="flex justify-between items-center mb-8">
             <div>
-                <h1 className="text-4xl font-bold text-gray-900 dark:text-white">
+                <h1 className="text-4xl font-bold text-white">
                     {isEmployee ? "Employee Dashboard" : "Admin Dashboard"}
                 </h1>
-                <p className="text-gray-600 dark:text-gray-400 mt-2">
+                <p className="text-gray-400 mt-2">
                     Welcome, {adminUser.email} ({adminUser.role})
                 </p>
             </div>

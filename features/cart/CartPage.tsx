@@ -35,9 +35,9 @@ export default function CartPage() {
 
     if (cart.length === 0) {
         return (
-            <div className="min-h-screen bg-white dark:bg-gray-900 py-12 px-4">
+            <div className="min-h-screen bg-gray-900 py-12 px-4">
                 <div className="max-w-4xl mx-auto">
-                    <h1 className="text-4xl font-bold mb-8 text-gray-900 dark:text-white">
+                    <h1 className="text-4xl font-bold mb-8 text-white">
                         Shopping Cart
                     </h1>
                     <EmptyCartAlert />
@@ -47,7 +47,7 @@ export default function CartPage() {
     }
 
     return (
-        <div className="min-h-screen bg-white dark:bg-gray-900 py-12 px-4">
+        <div className="min-h-screen bg-gray-900 py-12 px-4">
             <div className="max-w-7xl mx-auto">
                 <CartHeader totalItems={getTotalItems()} onClearCart={handleClearCart} />
 
