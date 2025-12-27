@@ -1,23 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardBody } from "@heroui/react";
+import { Card, CardBody, Image } from "@heroui/react";
 import Link from "next/link";
-import { apiUrl } from "@/lib/api-config";
-
-interface Service {
-  id: string;
-  name: string;
-  description: string;
-  icon: string;
-  image?: string;
-  features: string[];
-  createdAt: string;
-  updatedAt: string;
-}
+import { apiGet } from "@/lib/api-client";
+import { Item, ItemListResponse } from "@/types/api";
 
 export default function ServicesSection() {
-  const [services, setServices] = useState<Service[]>([]);
+  const [services, setServices] = useState<Item[]>([]);
 
   useEffect(() => {
     fetchServices();
@@ -25,12 +15,13 @@ export default function ServicesSection() {
 
   const fetchServices = async () => {
     try {
-      const response = await fetch(apiUrl("api/services"));
-      const data = await response.json();
-      if (data.success) {
-        // Show only first 3 services on homepage
-        setServices(data.services.slice(0, 3) || []);
-      }
+      const data: ItemListResponse = await apiGet<ItemListResponse>("item", { skipAuth: true });
+      // 过滤出 services (duration > 0) 且状态为 ACTIVE
+      const serviceItems = (data.items || []).filter(
+        (item) => item.duration && item.duration > 0 && (!item.status || item.status === "ACTIVE")
+      );
+      // Show only first 3 services on homepage
+      setServices(serviceItems.slice(0, 3));
     } catch (error) {
       console.error("Error fetching services:", error);
     }
@@ -41,21 +32,39 @@ export default function ServicesSection() {
   }
 
   return (
-    <section className="py-20 px-4 bg-gray-50 dark:bg-gray-800">
+    <section className="py-20 px-4 bg-gray-800">
       <div className="max-w-7xl mx-auto">
-        <h2 className="text-4xl font-bold text-center mb-12 text-gray-900 dark:text-white">
+        <h2 className="text-4xl font-bold text-center mb-12 text-white">
           Our Services
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {services.map((service) => (
             <Card key={service.id} className="hover:shadow-lg transition-shadow">
               <CardBody className="p-8">
-                <div className="text-6xl mb-4 text-center">{service.icon}</div>
-                <h3 className="text-2xl font-semibold mb-4 text-center">
+                {service.imageUrl && (
+                  <div className="mb-4 text-center">
+                    <Image
+                      src={service.imageUrl}
+                      alt={service.name}
+                      width={200}
+                      height={200}
+                      className="object-cover rounded-lg mx-auto"
+                    />
+                  </div>
+                )}
+                <h3 className="text-2xl font-semibold mb-4 text-center text-white">
                   {service.name}
                 </h3>
-                <p className="text-gray-600 dark:text-gray-400 text-center mb-6">
+                <p className="text-gray-400 text-center mb-4">
                   {service.description}
+                </p>
+                {service.duration && (
+                  <p className="text-sm text-gray-500 text-center mb-2">
+                    Duration: {service.duration} minutes
+                  </p>
+                )}
+                <p className="text-lg font-bold text-primary text-center mb-4">
+                  ${service.price.toFixed(2)}
                 </p>
                 <div className="text-center">
                   <Link
