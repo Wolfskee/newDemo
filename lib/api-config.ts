@@ -2,7 +2,7 @@
 const isDev = process.env.NODE_ENV === 'development';
 
 export const API_BASE_URL = isDev
-  ? (process.env.NEXT_PUBLIC_API_URL_DEV || 'http://3.143.74.213:3001')
+  ? (process.env.NEXT_PUBLIC_API_URL_DEV || 'http://127.0.0.1:3001')
   : (process.env.NEXT_PUBLIC_API_URL || '/api');
 
 export const apiUrl = (endpoint: string) => {

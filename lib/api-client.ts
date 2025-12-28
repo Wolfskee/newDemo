@@ -137,8 +137,24 @@ export const apiRequest = async <T = any>(
 };
 
 // 便捷方法
-export const apiGet = <T = any>(endpoint: string, options?: ApiRequestOptions): Promise<T> => {
-  return apiRequest<T>(endpoint, { ...options, method: "GET" }).then(async (res) => {
+export const apiGet = <T = any>(
+  endpoint: string, 
+  options?: ApiRequestOptions & { params?: Record<string, string | number> }
+): Promise<T> => {
+  // 如果有查询参数，构建查询字符串
+  let url = endpoint;
+  if (options?.params) {
+    const queryString = new URLSearchParams(
+      Object.entries(options.params).reduce((acc, [key, value]) => {
+        acc[key] = String(value);
+        return acc;
+      }, {} as Record<string, string>)
+    ).toString();
+    url = `${endpoint}?${queryString}`;
+  }
+
+  const { params, ...restOptions } = options || {};
+  return apiRequest<T>(url, { ...restOptions, method: "GET" }).then(async (res) => {
     if (!res.ok) {
       const error = await res.json().catch(() => ({ message: "Request failed" }));
       throw new Error(error.message || `HTTP ${res.status}`);
