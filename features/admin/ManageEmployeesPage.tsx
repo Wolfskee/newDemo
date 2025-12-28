@@ -26,6 +26,7 @@ export default function ManageEmployeesPage() {
     username: "",
     email: "",
     password: "",
+    confirmPassword: "",
     phone: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -69,6 +70,7 @@ export default function ManageEmployeesPage() {
         username: employee.username || "",
         email: employee.email,
         password: "",
+        confirmPassword: "",
         phone: employee.phone || "",
       });
     } else {
@@ -77,6 +79,7 @@ export default function ManageEmployeesPage() {
         username: "",
         email: "",
         password: "",
+        confirmPassword: "",
         phone: "",
       });
     }
@@ -96,6 +99,14 @@ export default function ManageEmployeesPage() {
       return;
     }
 
+    // 验证密码和确认密码是否一致
+    if (formData.password) {
+      if (formData.password !== formData.confirmPassword) {
+        alert("Password and confirm password do not match");
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     try {
       if (editingEmployee) {
@@ -111,7 +122,7 @@ export default function ManageEmployeesPage() {
         await apiPut(`user/${editingEmployee.id}`, body);
         await fetchEmployees();
         onOpenChange();
-        setFormData({ username: "", email: "", password: "", phone: "" });
+        setFormData({ username: "", email: "", password: "", confirmPassword: "", phone: "" });
         setEditingEmployee(null);
       } else {
         // 创建新员工 - 使用 POST /auth/register (需要 skipAuth: true)
@@ -151,7 +162,7 @@ export default function ManageEmployeesPage() {
         
         await fetchEmployees();
         onOpenChange();
-        setFormData({ username: "", email: "", password: "", phone: "" });
+        setFormData({ username: "", email: "", password: "", confirmPassword: "", phone: "" });
         alert("Employee created successfully! Credentials have been sent to their email.");
       }
     } catch (error) {
@@ -189,26 +200,33 @@ export default function ManageEmployeesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-4 md:py-8 px-4">
       <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-6 md:mb-8 gap-4">
           <div>
-            <h1 className="text-4xl font-bold text-gray-900 dark:text-white">
+            <h1 className="text-2xl md:text-4xl font-bold text-gray-900 dark:text-white">
               Manage Employees
             </h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-2">
+            <p className="text-sm md:text-base text-gray-600 dark:text-gray-400 mt-1 md:mt-2">
               Add, edit, or remove employees
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <Button
               color="default"
               variant="flat"
               onPress={() => router.push("/admin/dashboard")}
+              size="sm"
+              className="w-full sm:w-auto"
             >
-              ← Back to Dashboard
+              ← Back
             </Button>
-            <Button color="warning" onPress={() => handleOpenModal()}>
+            <Button 
+              color="warning" 
+              onPress={() => handleOpenModal()}
+              size="sm"
+              className="w-full sm:w-auto"
+            >
               + Add Employee
             </Button>
           </div>
@@ -227,7 +245,13 @@ export default function ManageEmployeesPage() {
         />
 
         {/* Add/Edit Employee Modal */}
-        <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="2xl" scrollBehavior="inside">
+        <Modal 
+          isOpen={isOpen} 
+          onOpenChange={onOpenChange} 
+          size="2xl" 
+          scrollBehavior="inside"
+          className="max-w-[95vw]"
+        >
           <ModalContent>
             {(onClose) => (
               <>
@@ -268,6 +292,24 @@ export default function ManageEmployeesPage() {
                       isRequired={!editingEmployee}
                       fullWidth
                     />
+                    {formData.password && (
+                      <Input
+                        label="Confirm Password"
+                        type="password"
+                        placeholder="Enter password again"
+                        value={formData.confirmPassword}
+                        onChange={(e) =>
+                          setFormData({ ...formData, confirmPassword: e.target.value })
+                        }
+                        isRequired={!!formData.password}
+                        fullWidth
+                        errorMessage={
+                          formData.confirmPassword && formData.password !== formData.confirmPassword
+                            ? "Passwords do not match"
+                            : undefined
+                        }
+                      />
+                    )}
                     <Input
                       label="Phone"
                       type="tel"

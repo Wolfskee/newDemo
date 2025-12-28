@@ -13,57 +13,110 @@ export default function ProductsTableCard({ products, onEdit, onDelete }: Produc
   return (
     <Card>
       <CardBody>
-        <Table aria-label="Products table">
-          <TableHeader>
-            <TableColumn>IMAGE</TableColumn>
-            <TableColumn>NAME</TableColumn>
-            <TableColumn>DESCRIPTION</TableColumn>
-            <TableColumn>PRICE</TableColumn>
-            <TableColumn>ACTIONS</TableColumn>
-          </TableHeader>
-          <TableBody emptyContent="No products found">
-            {products.map((product) => (
-              <TableRow key={product.id}>
-                <TableCell>
+        {/* 桌面端表格 */}
+        <div className="hidden md:block">
+          <Table aria-label="Products table">
+            <TableHeader>
+              <TableColumn>IMAGE</TableColumn>
+              <TableColumn>NAME</TableColumn>
+              <TableColumn>DESCRIPTION</TableColumn>
+              <TableColumn>PRICE</TableColumn>
+              <TableColumn>ACTIONS</TableColumn>
+            </TableHeader>
+            <TableBody emptyContent="No products found">
+              {products.map((product) => (
+                <TableRow key={product.id}>
+                  <TableCell>
+                    <Image
+                      src={product.imageUrl}
+                      alt={product.name}
+                      width={60}
+                      height={60}
+                      className="object-cover rounded"
+                    />
+                  </TableCell>
+                  <TableCell className="font-semibold">{product.name}</TableCell>
+                  <TableCell className="max-w-xs truncate">
+                    {product.description}
+                  </TableCell>
+                  <TableCell className="font-semibold text-primary">
+                    ${product.price.toFixed(2)}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        color="primary"
+                        variant="flat"
+                        onPress={() => onEdit(product)}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        size="sm"
+                        color="danger"
+                        variant="flat"
+                        onPress={() => onDelete(product.id)}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+
+        {/* 移动端卡片列表 */}
+        <div className="md:hidden space-y-4">
+          {products.length === 0 ? (
+            <p className="text-center text-gray-500 py-8">No products found</p>
+          ) : (
+            products.map((product) => (
+              <Card key={product.id} className="p-4">
+                <div className="flex gap-4">
                   <Image
                     src={product.imageUrl}
                     alt={product.name}
-                    width={60}
-                    height={60}
-                    className="object-cover rounded"
+                    width={80}
+                    height={80}
+                    className="object-cover rounded flex-shrink-0"
                   />
-                </TableCell>
-                <TableCell className="font-semibold">{product.name}</TableCell>
-                <TableCell className="max-w-xs truncate">
-                  {product.description}
-                </TableCell>
-                <TableCell className="font-semibold text-primary">
-                  ${product.price.toFixed(2)}
-                </TableCell>
-                <TableCell>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      color="primary"
-                      variant="flat"
-                      onPress={() => onEdit(product)}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      size="sm"
-                      color="danger"
-                      variant="flat"
-                      onPress={() => onDelete(product.id)}
-                    >
-                      Delete
-                    </Button>
+                  <div className="flex-1 space-y-2">
+                    <div className="font-semibold text-lg">{product.name}</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+                      {product.description}
+                    </div>
+                    <div className="font-semibold text-primary text-lg">
+                      ${product.price.toFixed(2)}
+                    </div>
+                    <div className="flex gap-2 pt-2">
+                      <Button
+                        size="sm"
+                        color="primary"
+                        variant="flat"
+                        onPress={() => onEdit(product)}
+                        className="flex-1"
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        size="sm"
+                        color="danger"
+                        variant="flat"
+                        onPress={() => onDelete(product.id)}
+                        className="flex-1"
+                      >
+                        Delete
+                      </Button>
+                    </div>
                   </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+                </div>
+              </Card>
+            ))
+          )}
+        </div>
       </CardBody>
     </Card>
   );

@@ -38,7 +38,38 @@ export default function Navbar() {
 
   return (
     <NextUINavbar maxWidth="xl" position="sticky">
-      <NavbarContent className="gap-4" justify="start">
+      {/* 移动端布局 */}
+      <NavbarContent className="md:hidden gap-2" justify="start">
+        <NavbarItem>
+          <Link
+            as={NextLink}
+            color={pathname === "/" ? "primary" : "foreground"}
+            href="/"
+            className="font-bold"
+          >
+            Home
+          </Link>
+        </NavbarItem>
+        <NavbarItem>
+          <Button
+            color="secondary"
+            variant="flat"
+            size="sm"
+            onPress={() => {
+              if (user) {
+                router.push("/profile#booking");
+              } else {
+                router.push("/login");
+              }
+            }}
+          >
+            Book Service
+          </Button>
+        </NavbarItem>
+      </NavbarContent>
+
+      {/* 桌面端布局 - 左侧链接 */}
+      <NavbarContent className="hidden md:flex gap-4" justify="start">
         <NavbarItem>
           <Link
             as={NextLink}
@@ -92,7 +123,60 @@ export default function Navbar() {
           </Button>
         </NavbarItem>
       </NavbarContent>
+
+      {/* 移动端和桌面端 - 右侧操作 */}
       <NavbarContent justify="end">
+        {/* 移动端汉堡菜单 */}
+        <NavbarItem className="md:hidden">
+          <Dropdown placement="bottom-end">
+            <DropdownTrigger>
+              <Button
+                isIconOnly
+                variant="light"
+                aria-label="Menu"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                  className="w-6 h-6"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
+                  />
+                </svg>
+              </Button>
+            </DropdownTrigger>
+            <DropdownMenu aria-label="Navigation Menu" variant="flat">
+              <DropdownItem
+                key="products"
+                color={pathname === "/products" ? "primary" : "default"}
+                onPress={() => router.push("/products")}
+              >
+                Products
+              </DropdownItem>
+              <DropdownItem
+                key="services"
+                color={pathname === "/services" ? "primary" : "default"}
+                onPress={() => router.push("/services")}
+              >
+                Services
+              </DropdownItem>
+              <DropdownItem
+                key="about"
+                color={pathname === "/about" ? "primary" : "default"}
+                onPress={() => router.push("/about")}
+              >
+                About Us
+              </DropdownItem>
+            </DropdownMenu>
+          </Dropdown>
+        </NavbarItem>
+
         {user ? (
           <>
             <NavbarItem>
@@ -151,12 +235,25 @@ export default function Navbar() {
           </>
         ) : (
           <>
-            <NavbarItem>
+            {/* 移动端 Login 按钮 */}
+            <NavbarItem className="md:hidden">
+              <Button
+                as={NextLink}
+                color="primary"
+                href="/login"
+                variant="flat"
+                size="sm"
+              >
+                Login
+              </Button>
+            </NavbarItem>
+            {/* 桌面端 Login 和 Sign Up 按钮 */}
+            <NavbarItem className="hidden md:flex">
               <Button as={NextLink} color="primary" href="/login" variant="flat">
                 Login
               </Button>
             </NavbarItem>
-            <NavbarItem>
+            <NavbarItem className="hidden md:flex">
               <Button as={NextLink} color="primary" href="/register" variant="solid">
                 Sign Up
               </Button>

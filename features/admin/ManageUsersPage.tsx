@@ -31,6 +31,7 @@ export default function ManageUsersPage() {
     username: "",
     email: "",
     password: "",
+    confirmPassword: "",
     phone: "",
     role: "CUSTOMER",
   });
@@ -64,6 +65,7 @@ export default function ManageUsersPage() {
         username: user.username || "",
         email: user.email,
         password: "",
+        confirmPassword: "",
         phone: user.phone || "",
         role: user.role || "CUSTOMER",
       });
@@ -73,6 +75,7 @@ export default function ManageUsersPage() {
         username: "",
         email: "",
         password: "",
+        confirmPassword: "",
         phone: "",
         role: "CUSTOMER",
       });
@@ -93,6 +96,14 @@ export default function ManageUsersPage() {
       return;
     }
 
+    // 验证密码和确认密码是否一致
+    if (formData.password) {
+      if (formData.password !== formData.confirmPassword) {
+        alert("Password and confirm password do not match");
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     try {
       if (editingUser) {
@@ -108,7 +119,7 @@ export default function ManageUsersPage() {
         await apiPut(`user/${editingUser.id}`, body);
         await fetchUsers();
         onOpenChange();
-        setFormData({ username: "", email: "", password: "", phone: "", role: "CUSTOMER" });
+        setFormData({ username: "", email: "", password: "", confirmPassword: "", phone: "", role: "CUSTOMER" });
         setEditingUser(null);
       } else {
         // 创建新用户 - 使用 POST /auth/register (需要 skipAuth: true)
@@ -148,7 +159,7 @@ export default function ManageUsersPage() {
 
         await fetchUsers();
         onOpenChange();
-        setFormData({ username: "", email: "", password: "", phone: "", role: "CUSTOMER" });
+        setFormData({ username: "", email: "", password: "", confirmPassword: "", phone: "", role: "CUSTOMER" });
         alert("User created successfully! A welcome email has been sent.");
       }
     } catch (error) {
@@ -187,26 +198,33 @@ export default function ManageUsersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-4 md:py-8 px-4">
       <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-6 md:mb-8 gap-4">
           <div>
-            <h1 className="text-4xl font-bold text-gray-900 dark:text-white">
+            <h1 className="text-2xl md:text-4xl font-bold text-gray-900 dark:text-white">
               Manage Users
             </h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-2">
+            <p className="text-sm md:text-base text-gray-600 dark:text-gray-400 mt-1 md:mt-2">
               View and manage all registered users
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <Button
               color="default"
               variant="flat"
               onPress={() => router.push("/admin/dashboard")}
+              size="sm"
+              className="w-full sm:w-auto"
             >
-              ← Back to Dashboard
+              ← Back
             </Button>
-            <Button color="primary" onPress={() => handleOpenModal()}>
+            <Button 
+              color="primary" 
+              onPress={() => handleOpenModal()}
+              size="sm"
+              className="w-full sm:w-auto"
+            >
               + Add User
             </Button>
           </div>
@@ -225,7 +243,13 @@ export default function ManageUsersPage() {
         />
 
         {/* Add/Edit User Modal */}
-        <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="2xl" scrollBehavior="inside">
+        <Modal 
+          isOpen={isOpen} 
+          onOpenChange={onOpenChange} 
+          size="2xl" 
+          scrollBehavior="inside"
+          className="max-w-[95vw]"
+        >
           <ModalContent>
             {(onClose) => (
               <>
@@ -266,6 +290,24 @@ export default function ManageUsersPage() {
                       isRequired={!editingUser}
                       fullWidth
                     />
+                    {formData.password && (
+                      <Input
+                        label="Confirm Password"
+                        type="password"
+                        placeholder="Enter password again"
+                        value={formData.confirmPassword}
+                        onChange={(e) =>
+                          setFormData({ ...formData, confirmPassword: e.target.value })
+                        }
+                        isRequired={!!formData.password}
+                        fullWidth
+                        errorMessage={
+                          formData.confirmPassword && formData.password !== formData.confirmPassword
+                            ? "Passwords do not match"
+                            : undefined
+                        }
+                      />
+                    )}
                     <Input
                       label="Phone"
                       type="tel"
