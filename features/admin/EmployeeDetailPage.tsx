@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@heroui/react";
 import { apiUrl } from "@/lib/api-config";
-import { User, UserListResponse, Appointment, AppointmentListResponse } from "@/types/api";
+import { User, UserListResponse, Appointment } from "@/types/api";
 import NotFoundCard from "./components/NotFoundCard";
 import EmployeeInfoCard from "./components/EmployeeInfoCard";
 import BookingHistoryCard from "./components/BookingHistoryCard";
@@ -41,12 +41,23 @@ export default function EmployeeDetailPage() {
         if (foundEmployee) {
           setEmployee(foundEmployee);
           
-          // 获取员工的预约
-          const appointmentsResponse = await fetch(apiUrl("appointment"));
+          // 使用 /appointment/user/{employeeId} 端点获取指定员工的预约
+          const sanitizedEmployeeId = encodeURIComponent(foundEmployee.id.trim());
+          const endpoint = `appointment/user/${sanitizedEmployeeId}`;
+          
+          // 获取当前日期，格式化为 YYYY-MM-DD，用于筛选未来和今天的预约
+          const today = new Date();
+          const year = today.getFullYear();
+          const month = String(today.getMonth() + 1).padStart(2, '0');
+          const day = String(today.getDate()).padStart(2, '0');
+          const currentDate = `${year}-${month}-${day}`;
+          
+          const appointmentsResponse = await fetch(`${apiUrl(endpoint)}?date=${currentDate}`);
           if (appointmentsResponse.ok) {
-            const appointmentsData: AppointmentListResponse = await appointmentsResponse.json();
-            const employeeAppointments = (appointmentsData.appointments || []).filter(
-              (apt) => apt.employeeId === foundEmployee.id
+            const appointmentsData: Appointment[] = await appointmentsResponse.json();
+            // 过滤出该员工的预约并排除已取消的预约
+            const employeeAppointments = (appointmentsData || []).filter(
+              (apt) => apt.employeeId === foundEmployee.id && apt.status !== "CANCELLED"
             );
             const sortedAppointments = employeeAppointments.sort(
               (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
