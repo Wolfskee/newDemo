@@ -114,3 +114,35 @@ export interface AuthResponse {
   refreshToken: string;
   user?: User; // 某些 API 可能同时返回用户信息
 }
+
+// 订单接口
+export interface Order {
+  id: string;
+  customerId: string;
+  items: OrderItem[];
+  total: number;
+  status: string; // PENDING, COMPLETED, CANCELLED 等
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 订单项接口
+export interface OrderItem {
+  id: string;
+  orderId: string;
+  itemId: string;
+  itemName: string;
+  quantity: number;
+  price: number;
+  subtotal: number;
+}
+
+// 订单列表响应接口
+export interface OrderListResponse {
+  orders: Order[];
+  total: number;
+  totalPages: number;
+  currentPage: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+}

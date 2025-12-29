@@ -25,9 +25,13 @@ import { Appointment } from "@/types/api";
 
 interface BookingCalendarProps {
   appointments: Appointment[];
+  onCancelAppointment?: (appointmentId: string) => Promise<void>;
+  onConfirmAppointment?: (appointmentId: string) => Promise<void>;
+  showCancelButton?: boolean;
+  showConfirmButton?: boolean;
 }
 
-export default function BookingCalendar({ appointments }: BookingCalendarProps) {
+export default function BookingCalendar({ appointments, onCancelAppointment, onConfirmAppointment, showCancelButton = false, showConfirmButton = false }: BookingCalendarProps) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -138,6 +142,21 @@ export default function BookingCalendar({ appointments }: BookingCalendarProps) 
                     <div className="space-y-1">
                       {dayAppointments.slice(0, 3).map((apt) => {
                         const { displayTime } = formatDateTime(apt.date);
+                        const isCancelled = apt.status === "CANCELLED";
+                        const isConfirmed = apt.status === "CONFIRMED";
+                        const isPending = apt.status === "PENDING";
+                        
+                        let bgColor: string | undefined;
+                        let textColor = "white";
+                        
+                        if (isCancelled) {
+                          bgColor = "#f31260";
+                        } else if (isConfirmed) {
+                          bgColor = "#17c964";
+                        } else if (isPending) {
+                          bgColor = "#f5a524";
+                        }
+                        
                         return (
                           <div
                             key={apt.id}
@@ -146,8 +165,11 @@ export default function BookingCalendar({ appointments }: BookingCalendarProps) 
                               setSelectedDate(formatDateTime(apt.date).date);
                             }}
                             className={`text-[10px] sm:text-xs p-1 rounded cursor-pointer truncate ${
-                              "bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-300 hover:bg-primary-200 dark:hover:bg-primary-900/50"
+                              bgColor
+                                ? "hover:opacity-80"
+                                : "bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-300 hover:bg-primary-200 dark:hover:bg-primary-900/50"
                             }`}
+                            style={bgColor ? { backgroundColor: bgColor, color: textColor } : undefined}
                             title={`${apt.title} - ${displayTime}`}
                           >
                             <div className="font-medium">{displayTime}</div>
@@ -208,6 +230,7 @@ export default function BookingCalendar({ appointments }: BookingCalendarProps) 
                             color={
                               selectedAppointment.status === "PENDING" ? "warning" :
                               selectedAppointment.status === "CONFIRMED" ? "success" :
+                              selectedAppointment.status === "CANCELLED" ? "danger" :
                               "default"
                             } 
                             size="sm"
@@ -225,6 +248,48 @@ export default function BookingCalendar({ appointments }: BookingCalendarProps) 
                     </div>
                   </CardBody>
                 </Card>
+                <div className="flex gap-2 mt-4">
+                  {showConfirmButton && onConfirmAppointment && selectedAppointment.status === "PENDING" && (
+                    <Button
+                      color="success"
+                      variant="flat"
+                      onPress={async () => {
+                        if (window.confirm("Are you sure you want to confirm this appointment?")) {
+                          try {
+                            await onConfirmAppointment(selectedAppointment.id);
+                            setSelectedAppointment(null);
+                            setSelectedDate(null);
+                          } catch (error) {
+                            console.error("Error confirming appointment:", error);
+                            alert("Failed to confirm appointment. Please try again.");
+                          }
+                        }
+                      }}
+                    >
+                      Confirm Appointment
+                    </Button>
+                  )}
+                  {showCancelButton && onCancelAppointment && selectedAppointment.status !== "CANCELLED" && (
+                    <Button
+                      color="danger"
+                      variant="flat"
+                      onPress={async () => {
+                        if (window.confirm("Are you sure you want to cancel this appointment?")) {
+                          try {
+                            await onCancelAppointment(selectedAppointment.id);
+                            setSelectedAppointment(null);
+                            setSelectedDate(null);
+                          } catch (error) {
+                            console.error("Error canceling appointment:", error);
+                            alert("Failed to cancel appointment. Please try again.");
+                          }
+                        }
+                      }}
+                    >
+                      Cancel Appointment
+                    </Button>
+                  )}
+                </div>
               </div>
             ) : selectedDate ? (
               <div className="space-y-4">

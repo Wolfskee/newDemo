@@ -17,6 +17,7 @@ export default function AdminDashboardPage() {
         isEmployee,
         recentOrders,
         handleLogout,
+        handleAppointmentsUpdate,
     } = useAdminDashboard();
 
     if (!adminUser || loading) {
@@ -45,7 +46,10 @@ export default function AdminDashboardPage() {
                 </div>
 
                 {isEmployee && (
-                    <MyAppointmentsSection appointments={appointments} />
+                    <MyAppointmentsSection 
+                        appointments={appointments} 
+                        onAppointmentsUpdate={handleAppointmentsUpdate}
+                    />
                 )}
             </div>
         </div>
