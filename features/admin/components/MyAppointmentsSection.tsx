@@ -12,6 +12,7 @@ interface MyAppointmentsSectionProps {
 
 export default function MyAppointmentsSection({ appointments, onAppointmentsUpdate }: MyAppointmentsSectionProps) {
     const [isCanceling, setIsCanceling] = useState(false);
+    const [isConfirming, setIsConfirming] = useState(false);
 
     const handleCancelAppointment = async (appointmentId: string) => {
         setIsCanceling(true);
@@ -30,6 +31,23 @@ export default function MyAppointmentsSection({ appointments, onAppointmentsUpda
         }
     };
 
+    const handleConfirmAppointment = async (appointmentId: string) => {
+        setIsConfirming(true);
+        try {
+            // 更新预约状态为 CONFIRMED
+            await apiPut(`appointment/${appointmentId}`, {
+                status: "CONFIRMED"
+            });
+            // 通知父组件刷新预约列表
+            onAppointmentsUpdate();
+        } catch (error) {
+            console.error("Error confirming appointment:", error);
+            throw error;
+        } finally {
+            setIsConfirming(false);
+        }
+    };
+
     return (
         <div className="mt-8">
             <h2 className="text-2xl font-bold text-white mb-4">
@@ -38,7 +56,9 @@ export default function MyAppointmentsSection({ appointments, onAppointmentsUpda
             <BookingCalendar 
                 appointments={appointments} 
                 onCancelAppointment={handleCancelAppointment}
+                onConfirmAppointment={handleConfirmAppointment}
                 showCancelButton={true}
+                showConfirmButton={true}
             />
         </div>
     );

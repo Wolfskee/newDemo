@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import BookingCalendar from "@/components/BookingCalendar";
@@ -13,6 +13,7 @@ import SettingsCard from "./components/SettingsCard";
 import ProfileLoadingSkeleton from "./components/ProfileLoadingSkeleton";
 import ProfileError from "./components/ProfileError";
 import { useProfileActions } from "./hooks/useProfileActions";
+import { apiPut } from "@/lib/api-client";
 
 export default function ProfilePage() {
     const { user } = useAuth();
@@ -22,6 +23,26 @@ export default function ProfilePage() {
     const error = useProfileStore((state) => state.error);
     const fetchAppointments = useProfileStore((state) => state.fetchAppointments);
     const { handleLogout, handleBookingSuccess } = useProfileActions();
+    const [isCanceling, setIsCanceling] = useState(false);
+
+    const handleCancelAppointment = async (appointmentId: string) => {
+        setIsCanceling(true);
+        try {
+            // 更新预约状态为 CANCELLED
+            await apiPut(`appointment/${appointmentId}`, {
+                status: "CANCELLED"
+            });
+            // 刷新预约列表
+            if (user?.id) {
+                fetchAppointments(user.id);
+            }
+        } catch (error) {
+            console.error("Error canceling appointment:", error);
+            throw error;
+        } finally {
+            setIsCanceling(false);
+        }
+    };
 
     // Redirect to login if not authenticated
     useEffect(() => {
@@ -73,7 +94,11 @@ export default function ProfilePage() {
 
                 {/* My Bookings Calendar */}
                 <div className="mt-6">
-                    <BookingCalendar appointments={appointments} />
+                    <BookingCalendar 
+                        appointments={appointments} 
+                        onCancelAppointment={handleCancelAppointment}
+                        showCancelButton={true}
+                    />
                 </div>
 
                 {/* Settings Section */}
