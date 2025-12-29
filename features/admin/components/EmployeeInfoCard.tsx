@@ -47,7 +47,7 @@ export default function EmployeeInfoCard({ employee, bookingsCount }: EmployeeIn
                 {bookingsCount}
               </div>
               <div>
-                <span className="font-semibold">Member Since:</span>{" "}
+                <span className="font-semibold">Hired since:</span>{" "}
                 {formatDate(employee.createdAt)}
               </div>
             </div>

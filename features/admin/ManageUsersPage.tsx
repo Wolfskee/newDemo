@@ -50,7 +50,11 @@ export default function ManageUsersPage() {
   const fetchUsers = async () => {
     try {
       const data: UserListResponse = await apiGet<UserListResponse>("user");
-      setUsers(data.users || []);
+      // 只显示 CUSTOMER 角色的用户
+      const customerUsers = (data.users || []).filter(
+        (user: User) => user.role === "CUSTOMER" || user.role === "customer"
+      );
+      setUsers(customerUsers);
       setLoading(false);
     } catch (error) {
       console.error("Error fetching users:", error);

@@ -3,11 +3,11 @@
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@heroui/react";
-import { apiUrl } from "@/lib/api-config";
+import { apiGet } from "@/lib/api-client";
 import { User, UserListResponse, Appointment } from "@/types/api";
 import NotFoundCard from "./components/NotFoundCard";
 import EmployeeInfoCard from "./components/EmployeeInfoCard";
-import BookingHistoryCard from "./components/BookingHistoryCard";
+import BookingCalendar from "@/components/BookingCalendar";
 
 export default function EmployeeDetailPage() {
   const router = useRouter();
@@ -31,39 +31,30 @@ export default function EmployeeDetailPage() {
   const fetchEmployeeData = async () => {
     try {
       // 获取用户列表，找到对应的员工
-      const usersResponse = await fetch(apiUrl("user"));
-      if (usersResponse.ok) {
-        const usersData: UserListResponse = await usersResponse.json();
-        const foundEmployee = usersData.users?.find(
-          (u: User) => u.email === decodedEmail && (u.role === "EMPLOYEE" || u.role === "employee")
-        );
+      const usersData: UserListResponse = await apiGet<UserListResponse>("user");
+      const foundEmployee = usersData.users?.find(
+        (u: User) => u.email === decodedEmail && (u.role === "EMPLOYEE" || u.role === "employee")
+      );
+      
+      if (foundEmployee) {
+        setEmployee(foundEmployee);
         
-        if (foundEmployee) {
-          setEmployee(foundEmployee);
-          
-          // 使用 /appointment/user/{employeeId} 端点获取指定员工的预约
-          const sanitizedEmployeeId = encodeURIComponent(foundEmployee.id.trim());
-          const endpoint = `appointment/user/${sanitizedEmployeeId}`;
-          
-          // 获取当前日期，格式化为 YYYY-MM-DD，用于筛选未来和今天的预约
-          const today = new Date();
-          const year = today.getFullYear();
-          const month = String(today.getMonth() + 1).padStart(2, '0');
-          const day = String(today.getDate()).padStart(2, '0');
-          const currentDate = `${year}-${month}-${day}`;
-          
-          const appointmentsResponse = await fetch(`${apiUrl(endpoint)}?date=${currentDate}`);
-          if (appointmentsResponse.ok) {
-            const appointmentsData: Appointment[] = await appointmentsResponse.json();
-            // 过滤出该员工的预约并排除已取消的预约
-            const employeeAppointments = (appointmentsData || []).filter(
-              (apt) => apt.employeeId === foundEmployee.id && apt.status !== "CANCELLED"
-            );
-            const sortedAppointments = employeeAppointments.sort(
-              (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-            );
-            setAppointments(sortedAppointments);
-          }
+        // 使用 /appointment/user/{employeeId} 端点获取指定员工的所有预约
+        const sanitizedEmployeeId = encodeURIComponent(foundEmployee.id.trim());
+        const endpoint = `appointment/user/${sanitizedEmployeeId}`;
+        
+        try {
+          // 获取所有预约（不添加日期过滤，以便在日历中显示所有预约）
+          const appointmentsData: Appointment[] = await apiGet<Appointment[]>(endpoint);
+          // 过滤出该员工的预约并排除已取消的预约
+          const employeeAppointments = (appointmentsData || []).filter(
+            (apt) => apt.employeeId === foundEmployee.id && apt.status !== "CANCELLED"
+          );
+          setAppointments(employeeAppointments);
+        } catch (appointmentError) {
+          console.error("Error fetching appointments:", appointmentError);
+          // 即使预约获取失败，也继续显示员工信息
+          setAppointments([]);
         }
       }
 
@@ -118,7 +109,11 @@ export default function EmployeeDetailPage() {
         </div>
 
         <EmployeeInfoCard employee={employee} bookingsCount={appointments.length} />
-        <BookingHistoryCard appointments={appointments} />
+        
+        {/* 使用 BookingCalendar 显示员工的所有预约 */}
+        <div className="mt-6">
+          <BookingCalendar appointments={appointments} />
+        </div>
       </div>
     </div>
   );
