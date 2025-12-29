@@ -29,6 +29,13 @@ export const useAdminDashboard = () => {
         }
     }, [router, fetchStats, fetchAppointments]);
 
+    const handleAppointmentsUpdate = () => {
+        // 刷新预约列表
+        if (adminUser && (adminUser.role === "EMPLOYEE" || adminUser.role === "employee")) {
+            fetchAppointments(adminUser.id);
+        }
+    };
+
     const handleLogout = () => {
         localStorage.removeItem("adminUser");
         clearTokens();
@@ -51,6 +58,7 @@ export const useAdminDashboard = () => {
         isEmployee,
         recentOrders,
         handleLogout,
+        handleAppointmentsUpdate,
     };
 };
 
