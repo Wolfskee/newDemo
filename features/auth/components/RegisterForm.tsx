@@ -94,7 +94,7 @@ export default function RegisterForm() {
                         </Button>
                         <div className="text-center text-sm">
                             <span className="text-gray-500">Already have an account? </span>
-                            <Link href="/login" className="text-primary">
+                            <Link href="/demo/login" className="text-primary">
                                 Sign in
                             </Link>
                         </div>

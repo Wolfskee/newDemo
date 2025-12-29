@@ -58,7 +58,7 @@ export default function LoginForm() {
                         </Button>
                         <div className="text-center text-sm">
                             <span className="text-gray-500">Don't have an account? </span>
-                            <Link href="/register" className="text-primary">
+                            <Link href="/demo/register" className="text-primary">
                                 Sign up
                             </Link>
                         </div>

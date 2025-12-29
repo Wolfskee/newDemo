@@ -10,6 +10,12 @@ export const apiUrl = (endpoint: string) => {
     return endpoint;
   }
 
+  // Next.js API 路由（以 api/ 开头）使用相对路径
+  if (endpoint.startsWith('api/') || endpoint.startsWith('/api/')) {
+    const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    return cleanEndpoint;
+  }
+
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
   const base = API_BASE_URL.endsWith('/')
     ? API_BASE_URL.slice(0, -1)
