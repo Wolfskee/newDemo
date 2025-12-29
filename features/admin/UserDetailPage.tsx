@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { Button } from "@heroui/react";
-import { apiUrl } from "@/lib/api-config";
-import { User, UserListResponse, Appointment, AppointmentListResponse } from "@/types/api";
+import { Button, Card, CardBody, CardHeader, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Chip, Pagination } from "@heroui/react";
+import { apiGet } from "@/lib/api-client";
+import { User, Appointment, Order } from "@/types/api";
 import NotFoundCard from "./components/NotFoundCard";
 import UserInfoCard from "./components/UserInfoCard";
-import BookingHistoryCard from "./components/BookingHistoryCard";
+import BookingCalendar from "@/components/BookingCalendar";
 
 export default function UserDetailPage() {
   const router = useRouter();
@@ -16,7 +16,17 @@ export default function UserDetailPage() {
 
   const [user, setUser] = useState<User | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [allOrders, setAllOrders] = useState<Order[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const itemsPerPage = 10;
+  
+  // 计算分页数据
+  const totalPages = Math.ceil(allOrders.length / itemsPerPage);
+  const paginatedOrders = allOrders.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   useEffect(() => {
     // Check for admin session
@@ -31,31 +41,66 @@ export default function UserDetailPage() {
   const fetchUserData = async () => {
     try {
       // 获取用户信息
-      const userResponse = await fetch(apiUrl(`user/${userId}`));
-      if (userResponse.ok) {
-        const userData = await userResponse.json();
+      try {
+        const userData: User = await apiGet<User>(`user/${userId}`);
         setUser(userData);
-      } else if (userResponse.status === 404) {
+      } catch (error) {
+        console.error("Error fetching user:", error);
         setUser(null);
+        setLoading(false);
+        return;
       }
 
       // 获取用户的预约
-      const appointmentsResponse = await fetch(apiUrl("appointment"));
-      if (appointmentsResponse.ok) {
-        const appointmentsData: AppointmentListResponse = await appointmentsResponse.json();
-        const userAppointments = (appointmentsData.appointments || []).filter(
-          (apt) => apt.customerId === userId
+      try {
+        const sanitizedUserId = encodeURIComponent(userId.trim());
+        const endpoint = `appointment/user/${sanitizedUserId}`;
+        const appointmentsData: Appointment[] = await apiGet<Appointment[]>(endpoint);
+        const userAppointments = (appointmentsData || []).filter(
+          (apt) => apt.customerId === userId && apt.status !== "CANCELLED"
         );
-        const sortedAppointments = userAppointments.sort(
-          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
-        setAppointments(sortedAppointments);
+        setAppointments(userAppointments);
+      } catch (error) {
+        console.error("Error fetching appointments:", error);
+        setAppointments([]);
       }
+
+      // 获取用户的订单历史
+      await fetchOrders();
 
       setLoading(false);
     } catch (error) {
       console.error("Error fetching user data:", error);
       setLoading(false);
+    }
+  };
+
+  const fetchOrders = async () => {
+    try {
+      // 尝试获取订单，如果 API 不存在则使用空数组
+      const sanitizedUserId = encodeURIComponent(userId.trim());
+      const endpoint = `order/user/${sanitizedUserId}`;
+      
+      try {
+        // 获取所有订单（前端分页）
+        const ordersData: Order[] = await apiGet<Order[]>(endpoint);
+        
+        // 如果返回的是数组
+        if (Array.isArray(ordersData)) {
+          // 按创建时间降序排序
+          const sortedOrders = ordersData.sort(
+            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
+          setAllOrders(sortedOrders);
+        }
+      } catch (orderError) {
+        // 如果订单 API 不存在或失败，设置为空数组
+        console.warn("Order API not available or failed:", orderError);
+        setAllOrders([]);
+      }
+    } catch (error) {
+      console.error("Error fetching orders:", error);
+      setAllOrders([]);
     }
   };
 
@@ -103,7 +148,84 @@ export default function UserDetailPage() {
         </div>
 
         <UserInfoCard user={user} bookingsCount={appointments.length} />
-        <BookingHistoryCard appointments={appointments} />
+        
+        {/* 订单历史 */}
+        <Card className="mt-6">
+          <CardHeader>
+            <h2 className="text-2xl font-semibold">Order History</h2>
+          </CardHeader>
+          <CardBody>
+            {allOrders.length === 0 ? (
+              <p className="text-gray-500 dark:text-gray-400 text-center py-8">
+                No history
+              </p>
+            ) : (
+              <>
+                <Table aria-label="Order history table">
+                  <TableHeader>
+                    <TableColumn>ORDER ID</TableColumn>
+                    <TableColumn>ITEMS</TableColumn>
+                    <TableColumn>TOTAL</TableColumn>
+                    <TableColumn>STATUS</TableColumn>
+                    <TableColumn>DATE</TableColumn>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedOrders.map((order) => (
+                        <TableRow key={order.id}>
+                          <TableCell className="font-mono text-sm">
+                            {order.id.slice(0, 8)}...
+                          </TableCell>
+                          <TableCell>
+                            {order.items?.length || 0} item(s)
+                          </TableCell>
+                          <TableCell className="font-semibold">
+                            ${order.total.toFixed(2)}
+                          </TableCell>
+                          <TableCell>
+                            <Chip
+                              color={
+                                order.status === "COMPLETED" ? "success" :
+                                order.status === "PENDING" ? "warning" :
+                                order.status === "CANCELLED" ? "danger" :
+                                "default"
+                              }
+                              size="sm"
+                              variant="flat"
+                            >
+                              {order.status}
+                            </Chip>
+                          </TableCell>
+                          <TableCell>
+                            {new Date(order.createdAt).toLocaleDateString("en-US", {
+                              year: "numeric",
+                              month: "short",
+                              day: "numeric",
+                            })}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
+                
+                {totalPages > 1 && (
+                  <div className="flex justify-center mt-4">
+                    <Pagination
+                      total={totalPages}
+                      page={currentPage}
+                      onChange={(page) => setCurrentPage(page as number)}
+                      color="primary"
+                    />
+                  </div>
+                )}
+              </>
+            )}
+          </CardBody>
+        </Card>
+
+        {/* 预约日历 */}
+        <div className="mt-6">
+          <BookingCalendar appointments={appointments} />
+        </div>
       </div>
     </div>
   );
