@@ -76,9 +76,9 @@ export default function BookingCalendar({ appointments, onCancelAppointment, onC
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between w-full">
-          <h3 className="text-2xl font-semibold">My Appointments</h3>
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between w-full gap-4">
+          <h3 className="text-xl sm:text-2xl font-semibold">My Appointments</h3>
+          <div className="flex items-center justify-center sm:justify-end gap-2">
             <Button
               size="sm"
               variant="flat"
@@ -86,7 +86,7 @@ export default function BookingCalendar({ appointments, onCancelAppointment, onC
             >
               ←
             </Button>
-            <span className="text-lg font-semibold min-w-[180px] text-center">
+            <span className="text-base sm:text-lg font-semibold min-w-[140px] sm:min-w-[180px] text-center">
               {format(currentMonth, "MMMM yyyy")}
             </span>
             <Button
