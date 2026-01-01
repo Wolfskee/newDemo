@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import {
   Card,
   CardBody,
@@ -29,12 +29,16 @@ interface BookingCalendarProps {
   onConfirmAppointment?: (appointmentId: string) => Promise<void>;
   showCancelButton?: boolean;
   showConfirmButton?: boolean;
+  fullyBookedDates?: string[]; // 格式: ["2024-01-15", "2024-01-20"]
+  onDateClick?: (date: string) => void; // 日期点击回调
+  showDetails?: boolean; // 是否显示详情面板，默认为 true
 }
 
-export default function BookingCalendar({ appointments, onCancelAppointment, onConfirmAppointment, showCancelButton = false, showConfirmButton = false }: BookingCalendarProps) {
+export default function BookingCalendar({ appointments, onCancelAppointment, onConfirmAppointment, showCancelButton = false, showConfirmButton = false, fullyBookedDates = [], onDateClick, showDetails = true }: BookingCalendarProps) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const calendarRef = useRef<HTMLDivElement>(null);
 
   // 获取指定日期的预约
   const getAppointmentsForDate = (date: Date) => {
@@ -73,9 +77,19 @@ export default function BookingCalendar({ appointments, onCancelAppointment, onC
     };
   };
 
+  // 滚动到日历位置的函数
+  const scrollToCalendar = () => {
+    if (calendarRef.current) {
+      setTimeout(() => {
+        calendarRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
+    }
+  };
+
   return (
-    <Card>
-      <CardHeader>
+    <div ref={calendarRef}>
+      <Card>
+        <CardHeader>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between w-full gap-4">
           <h3 className="text-xl sm:text-2xl font-semibold">My Appointments</h3>
           <div className="flex items-center justify-center sm:justify-end gap-2">
@@ -100,7 +114,7 @@ export default function BookingCalendar({ appointments, onCancelAppointment, onC
         </div>
       </CardHeader>
       <CardBody>
-        <div className="flex flex-col lg:flex-row gap-6">
+        <div className={`flex flex-col ${showDetails ? 'lg:flex-row' : ''} gap-6`}>
           <div className="flex-1">
             {/* Calendar Header - Week Days */}
             <div className="grid grid-cols-7 gap-1 mb-2">
@@ -120,22 +134,33 @@ export default function BookingCalendar({ appointments, onCancelAppointment, onC
                 const dayAppointments = getAppointmentsForDate(day);
                 const isCurrentMonth = isSameMonth(day, currentMonth);
                 const isToday = isSameDay(day, new Date());
+                const dateStr = format(day, "yyyy-MM-dd");
+                const isFullyBooked = fullyBookedDates.includes(dateStr);
 
                 return (
                   <div
                     key={idx}
+                    onClick={() => {
+                      if (onDateClick && isCurrentMonth) {
+                        onDateClick(dateStr);
+                      }
+                    }}
                     className={`min-h-[110px] sm:min-h-[120px] border rounded-lg p-1.5 sm:p-2 ${
                       isCurrentMonth
-                        ? "bg-white dark:bg-gray-800"
+                        ? isFullyBooked
+                          ? "bg-gray-300 dark:bg-gray-700 opacity-50 cursor-not-allowed"
+                          : "bg-white dark:bg-gray-800"
                         : "bg-gray-50 dark:bg-gray-900"
-                    } ${isToday ? "ring-2 ring-blue-500" : ""}`}
+                    } ${isToday ? "ring-2 ring-blue-500" : ""} ${onDateClick && isCurrentMonth && !isFullyBooked ? "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700" : ""}`}
                   >
                     <div
                       className={`text-xs sm:text-sm font-medium mb-1 ${
                         isCurrentMonth
-                          ? "text-gray-900 dark:text-white"
+                          ? isFullyBooked
+                            ? "text-gray-500 dark:text-gray-400 line-through"
+                            : "text-gray-900 dark:text-white"
                           : "text-gray-400 dark:text-gray-600"
-                      } ${isToday ? "text-blue-600 dark:text-blue-400" : ""}`}
+                      } ${isToday && !isFullyBooked ? "text-blue-600 dark:text-blue-400" : ""}`}
                     >
                       {format(day, "d")}
                     </div>
@@ -160,10 +185,14 @@ export default function BookingCalendar({ appointments, onCancelAppointment, onC
                         return (
                           <div
                             key={apt.id}
-                            onClick={() => {
-                              setSelectedAppointment(apt);
-                              setSelectedDate(formatDateTime(apt.date).date);
-                            }}
+                        onClick={() => {
+                          if (showDetails) {
+                            setSelectedAppointment(apt);
+                            setSelectedDate(formatDateTime(apt.date).date);
+                          } else if (onDateClick) {
+                            onDateClick(formatDateTime(apt.date).date);
+                          }
+                        }}
                             className={`text-[10px] sm:text-xs p-1 rounded cursor-pointer truncate ${
                               bgColor
                                 ? "hover:opacity-80"
@@ -188,8 +217,9 @@ export default function BookingCalendar({ appointments, onCancelAppointment, onC
               })}
             </div>
           </div>
-          <div className="lg:w-80">
-            {selectedAppointment ? (
+          {showDetails && (
+            <div className="lg:w-80">
+              {selectedAppointment ? (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h4 className="font-semibold text-lg">Appointment Details</h4>
@@ -259,6 +289,7 @@ export default function BookingCalendar({ appointments, onCancelAppointment, onC
                             await onConfirmAppointment(selectedAppointment.id);
                             setSelectedAppointment(null);
                             setSelectedDate(null);
+                            scrollToCalendar();
                           } catch (error) {
                             console.error("Error confirming appointment:", error);
                             alert("Failed to confirm appointment. Please try again.");
@@ -279,6 +310,7 @@ export default function BookingCalendar({ appointments, onCancelAppointment, onC
                             await onCancelAppointment(selectedAppointment.id);
                             setSelectedAppointment(null);
                             setSelectedDate(null);
+                            scrollToCalendar();
                           } catch (error) {
                             console.error("Error canceling appointment:", error);
                             alert("Failed to cancel appointment. Please try again.");
@@ -367,10 +399,12 @@ export default function BookingCalendar({ appointments, onCancelAppointment, onC
                 )}
               </div>
             )}
-          </div>
+            </div>
+          )}
         </div>
       </CardBody>
-    </Card>
+      </Card>
+    </div>
   );
 }
 
