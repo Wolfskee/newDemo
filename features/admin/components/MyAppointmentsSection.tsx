@@ -3,7 +3,7 @@
 import { useState } from "react";
 import BookingCalendar from "@/components/BookingCalendar";
 import { Appointment } from "@/types/api";
-import { apiPut } from "@/lib/api-client";
+import { apiDelete } from "@/lib/api-client";
 
 interface MyAppointmentsSectionProps {
     appointments: Appointment[];
@@ -17,10 +17,8 @@ export default function MyAppointmentsSection({ appointments, onAppointmentsUpda
     const handleCancelAppointment = async (appointmentId: string) => {
         setIsCanceling(true);
         try {
-            // 更新预约状态为 CANCELLED
-            await apiPut(`appointment/${appointmentId}`, {
-                status: "CANCELLED"
-            });
+            // 使用 DELETE 请求删除预约
+            await apiDelete(`appointment/${appointmentId}`);
             // 通知父组件刷新预约列表
             onAppointmentsUpdate();
         } catch (error) {

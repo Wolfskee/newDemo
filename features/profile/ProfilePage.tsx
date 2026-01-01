@@ -13,7 +13,7 @@ import SettingsCard from "./components/SettingsCard";
 import ProfileLoadingSkeleton from "./components/ProfileLoadingSkeleton";
 import ProfileError from "./components/ProfileError";
 import { useProfileActions } from "./hooks/useProfileActions";
-import { apiPut } from "@/lib/api-client";
+import { apiDelete } from "@/lib/api-client";
 
 export default function ProfilePage() {
     const { user } = useAuth();
@@ -28,10 +28,8 @@ export default function ProfilePage() {
     const handleCancelAppointment = async (appointmentId: string) => {
         setIsCanceling(true);
         try {
-            // 更新预约状态为 CANCELLED
-            await apiPut(`appointment/${appointmentId}`, {
-                status: "CANCELLED"
-            });
+            // 使用 DELETE 请求删除预约
+            await apiDelete(`appointment/${appointmentId}`);
             // 刷新预约列表
             if (user?.id) {
                 fetchAppointments(user.id);
