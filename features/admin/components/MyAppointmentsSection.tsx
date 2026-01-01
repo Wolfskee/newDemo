@@ -3,7 +3,7 @@
 import { useState } from "react";
 import BookingCalendar from "@/components/BookingCalendar";
 import { Appointment } from "@/types/api";
-import { apiDelete } from "@/lib/api-client";
+import { apiDelete, apiPut } from "@/lib/api-client";
 
 interface MyAppointmentsSectionProps {
     appointments: Appointment[];
