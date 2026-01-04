@@ -32,9 +32,11 @@ interface BookingCalendarProps {
   fullyBookedDates?: string[]; // 格式: ["2024-01-15", "2024-01-20"]
   onDateClick?: (date: string) => void; // 日期点击回调
   showDetails?: boolean; // 是否显示详情面板，默认为 true
+  availableTimeSlotsByDate?: Map<string, string[]>; // 每个日期的可用时间段
+  timeSlots?: string[]; // 所有时间段列表
 }
 
-export default function BookingCalendar({ appointments, onCancelAppointment, onConfirmAppointment, showCancelButton = false, showConfirmButton = false, fullyBookedDates = [], onDateClick, showDetails = true }: BookingCalendarProps) {
+export default function BookingCalendar({ appointments, onCancelAppointment, onConfirmAppointment, showCancelButton = false, showConfirmButton = false, fullyBookedDates = [], onDateClick, showDetails = true, availableTimeSlotsByDate, timeSlots = [] }: BookingCalendarProps) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -86,12 +88,116 @@ export default function BookingCalendar({ appointments, onCancelAppointment, onC
     }
   };
 
+  // 处理 appointment 点击
+  const handleAppointmentClick = (apt: Appointment) => {
+    setSelectedAppointment(apt);
+    setSelectedDate(formatDateTime(apt.date).date);
+  };
+
+  // 渲染 appointment details 内容
+  const renderAppointmentDetails = (apt: Appointment | null) => {
+    if (!apt) return null;
+    
+    return (
+      <div className="space-y-4">
+        <Card className="bg-primary-50 dark:bg-primary-900/20">
+          <CardBody>
+            <div className="space-y-3">
+              <div>
+                <span className="text-sm text-gray-500 dark:text-gray-400">Title:</span>
+                <p className="font-semibold">{apt.title}</p>
+              </div>
+              <div>
+                <span className="text-sm text-gray-500 dark:text-gray-400">Date:</span>
+                <p className="font-semibold">{formatDateTime(apt.date).displayDate}</p>
+              </div>
+              <div>
+                <span className="text-sm text-gray-500 dark:text-gray-400">Time:</span>
+                <div className="mt-1">
+                  <Chip color="primary" size="sm">
+                    {formatDateTime(apt.date).displayTime}
+                  </Chip>
+                </div>
+              </div>
+              <div>
+                <span className="text-sm text-gray-500 dark:text-gray-400">Status:</span>
+                <div className="mt-1">
+                  <Chip 
+                    color={
+                      apt.status === "PENDING" ? "warning" :
+                      apt.status === "CONFIRMED" ? "success" :
+                      apt.status === "CANCELLED" ? "danger" :
+                      "default"
+                    } 
+                    size="sm"
+                  >
+                    {apt.status}
+                  </Chip>
+                </div>
+              </div>
+              {apt.description && (
+                <div>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">Description:</span>
+                  <p className="text-sm mt-1">{apt.description}</p>
+                </div>
+              )}
+            </div>
+          </CardBody>
+        </Card>
+        <div className="flex gap-2 mt-4">
+          {showConfirmButton && onConfirmAppointment && apt.status === "PENDING" && (
+            <Button
+              color="success"
+              variant="flat"
+              onPress={async () => {
+                if (window.confirm("Are you sure you want to confirm this appointment?")) {
+                  try {
+                    await onConfirmAppointment(apt.id);
+                    setSelectedAppointment(null);
+                    setSelectedDate(null);
+                    scrollToCalendar();
+                  } catch (error) {
+                    console.error("Error confirming appointment:", error);
+                    alert("Failed to confirm appointment. Please try again.");
+                  }
+                }
+              }}
+            >
+              Confirm Appointment
+            </Button>
+          )}
+          {showCancelButton && onCancelAppointment && apt.status !== "CANCELLED" && (
+            <Button
+              color="danger"
+              variant="flat"
+              onPress={async () => {
+                if (window.confirm("Are you sure you want to cancel this appointment?")) {
+                  try {
+                    await onCancelAppointment(apt.id);
+                    setSelectedAppointment(null);
+                    setSelectedDate(null);
+                    scrollToCalendar();
+                  } catch (error) {
+                    console.error("Error canceling appointment:", error);
+                    alert("Failed to cancel appointment. Please try again.");
+                  }
+                }
+              }}
+            >
+              Cancel Appointment
+            </Button>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div ref={calendarRef}>
       <Card>
         <CardHeader>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between w-full gap-4">
-          <h3 className="text-xl sm:text-2xl font-semibold">My Appointments</h3>
+          <h3 className="text-xl sm:text-2xl font-semibold">Calendar</h3>
           <div className="flex items-center justify-center sm:justify-end gap-2">
             <Button
               size="sm"
@@ -165,51 +271,85 @@ export default function BookingCalendar({ appointments, onCancelAppointment, onC
                       {format(day, "d")}
                     </div>
                     <div className="space-y-1">
-                      {dayAppointments.slice(0, 3).map((apt) => {
-                        const { displayTime } = formatDateTime(apt.date);
-                        const isCancelled = apt.status === "CANCELLED";
-                        const isConfirmed = apt.status === "CONFIRMED";
-                        const isPending = apt.status === "PENDING";
-                        
-                        let bgColor: string | undefined;
-                        let textColor = "white";
-                        
-                        if (isCancelled) {
-                          bgColor = "#f31260";
-                        } else if (isConfirmed) {
-                          bgColor = "#17c964";
-                        } else if (isPending) {
-                          bgColor = "#f5a524";
-                        }
-                        
-                        return (
-                          <div
-                            key={apt.id}
-                        onClick={() => {
-                          if (showDetails) {
-                            setSelectedAppointment(apt);
-                            setSelectedDate(formatDateTime(apt.date).date);
-                          } else if (onDateClick) {
-                            onDateClick(formatDateTime(apt.date).date);
+                      {!showDetails && availableTimeSlotsByDate ? (
+                        // 显示可用时间段模式（HomePage）
+                        (() => {
+                          const availableSlots = availableTimeSlotsByDate.get(dateStr) || [];
+                          if (availableSlots.length === 0) {
+                            return (
+                              <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 text-center py-1">
+                                Not available
+                              </div>
+                            );
                           }
-                        }}
-                            className={`text-[10px] sm:text-xs p-1 rounded cursor-pointer truncate ${
-                              bgColor
-                                ? "hover:opacity-80"
-                                : "bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-300 hover:bg-primary-200 dark:hover:bg-primary-900/50"
-                            }`}
-                            style={bgColor ? { backgroundColor: bgColor, color: textColor } : undefined}
-                            title={`${apt.title} - ${displayTime}`}
-                          >
-                            <div className="font-medium">{displayTime}</div>
-                            <div className="truncate">{apt.title}</div>
-                          </div>
-                        );
-                      })}
-                      {dayAppointments.length > 3 && (
-                        <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 text-center">
-                          +{dayAppointments.length - 3} more
-                        </div>
+                          return (
+                            <>
+                              <div className="text-[10px] sm:text-xs font-semibold text-primary-600 dark:text-primary-400 text-center">
+                                {availableSlots.length} slot{availableSlots.length > 1 ? 's' : ''} available
+                              </div>
+                              <div className="text-[9px] sm:text-[10px] text-gray-600 dark:text-gray-300 text-center space-y-0.5">
+                                {availableSlots.slice(0, 4).map((slot, idx) => (
+                                  <div key={idx}>{slot}</div>
+                                ))}
+                                {availableSlots.length > 4 && (
+                                  <div className="text-gray-400 dark:text-gray-500">
+                                    +{availableSlots.length - 4} more
+                                  </div>
+                                )}
+                              </div>
+                            </>
+                          );
+                        })()
+                      ) : (
+                        // 显示预约详情模式（原有逻辑）
+                        <>
+                          {dayAppointments.slice(0, 3).map((apt) => {
+                            const { displayTime } = formatDateTime(apt.date);
+                            const isCancelled = apt.status === "CANCELLED";
+                            const isConfirmed = apt.status === "CONFIRMED";
+                            const isPending = apt.status === "PENDING";
+                            
+                            let bgColor: string | undefined;
+                            let textColor = "white";
+                            
+                            if (isCancelled) {
+                              bgColor = "#f31260";
+                            } else if (isConfirmed) {
+                              bgColor = "#17c964";
+                            } else if (isPending) {
+                              bgColor = "#f5a524";
+                            }
+                            
+                            return (
+                              <div
+                                key={apt.id}
+                            onClick={() => {
+                              if (showDetails) {
+                                setSelectedAppointment(apt);
+                                setSelectedDate(formatDateTime(apt.date).date);
+                              } else if (onDateClick) {
+                                onDateClick(formatDateTime(apt.date).date);
+                              }
+                            }}
+                                className={`text-[10px] sm:text-xs p-1 rounded cursor-pointer truncate ${
+                                  bgColor
+                                    ? "hover:opacity-80"
+                                    : "bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-300 hover:bg-primary-200 dark:hover:bg-primary-900/50"
+                                }`}
+                                style={bgColor ? { backgroundColor: bgColor, color: textColor } : undefined}
+                                title={`${apt.title} - ${displayTime}`}
+                              >
+                                <div className="font-medium">{displayTime}</div>
+                                <div className="truncate">{apt.title}</div>
+                              </div>
+                            );
+                          })}
+                          {dayAppointments.length > 3 && (
+                            <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 text-center">
+                              +{dayAppointments.length - 3} more
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
@@ -234,94 +374,7 @@ export default function BookingCalendar({ appointments, onCancelAppointment, onC
                     ✕
                   </Button>
                 </div>
-                <Card className="bg-primary-50 dark:bg-primary-900/20">
-                  <CardBody>
-                    <div className="space-y-3">
-                      <div>
-                        <span className="text-sm text-gray-500 dark:text-gray-400">Title:</span>
-                        <p className="font-semibold">{selectedAppointment.title}</p>
-                      </div>
-                      <div>
-                        <span className="text-sm text-gray-500 dark:text-gray-400">Date:</span>
-                        <p className="font-semibold">{formatDateTime(selectedAppointment.date).displayDate}</p>
-                      </div>
-                      <div>
-                        <span className="text-sm text-gray-500 dark:text-gray-400">Time:</span>
-                        <div className="mt-1">
-                          <Chip color="primary" size="sm">
-                            {formatDateTime(selectedAppointment.date).displayTime}
-                          </Chip>
-                        </div>
-                      </div>
-                      <div>
-                        <span className="text-sm text-gray-500 dark:text-gray-400">Status:</span>
-                        <div className="mt-1">
-                          <Chip 
-                            color={
-                              selectedAppointment.status === "PENDING" ? "warning" :
-                              selectedAppointment.status === "CONFIRMED" ? "success" :
-                              selectedAppointment.status === "CANCELLED" ? "danger" :
-                              "default"
-                            } 
-                            size="sm"
-                          >
-                            {selectedAppointment.status}
-                          </Chip>
-                        </div>
-                      </div>
-                      {selectedAppointment.description && (
-                        <div>
-                          <span className="text-sm text-gray-500 dark:text-gray-400">Description:</span>
-                          <p className="text-sm mt-1">{selectedAppointment.description}</p>
-                        </div>
-                      )}
-                    </div>
-                  </CardBody>
-                </Card>
-                <div className="flex gap-2 mt-4">
-                  {showConfirmButton && onConfirmAppointment && selectedAppointment.status === "PENDING" && (
-                    <Button
-                      color="success"
-                      variant="flat"
-                      onPress={async () => {
-                        if (window.confirm("Are you sure you want to confirm this appointment?")) {
-                          try {
-                            await onConfirmAppointment(selectedAppointment.id);
-                            setSelectedAppointment(null);
-                            setSelectedDate(null);
-                            scrollToCalendar();
-                          } catch (error) {
-                            console.error("Error confirming appointment:", error);
-                            alert("Failed to confirm appointment. Please try again.");
-                          }
-                        }
-                      }}
-                    >
-                      Confirm Appointment
-                    </Button>
-                  )}
-                  {showCancelButton && onCancelAppointment && selectedAppointment.status !== "CANCELLED" && (
-                    <Button
-                      color="danger"
-                      variant="flat"
-                      onPress={async () => {
-                        if (window.confirm("Are you sure you want to cancel this appointment?")) {
-                          try {
-                            await onCancelAppointment(selectedAppointment.id);
-                            setSelectedAppointment(null);
-                            setSelectedDate(null);
-                            scrollToCalendar();
-                          } catch (error) {
-                            console.error("Error canceling appointment:", error);
-                            alert("Failed to cancel appointment. Please try again.");
-                          }
-                        }
-                      }}
-                    >
-                      Cancel Appointment
-                    </Button>
-                  )}
-                </div>
+                {renderAppointmentDetails(selectedAppointment)}
               </div>
             ) : selectedDate ? (
               <div className="space-y-4">
@@ -372,12 +425,11 @@ export default function BookingCalendar({ appointments, onCancelAppointment, onC
                         <Card
                           key={apt.id}
                           className="cursor-pointer hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
-                          onClick={() => {
-                            setSelectedDate(formatDateTime(apt.date).date);
-                            setSelectedAppointment(apt);
-                          }}
                         >
-                          <CardBody>
+                          <CardBody
+                            onClick={() => handleAppointmentClick(apt)}
+                            className="cursor-pointer"
+                          >
                             <div className="space-y-2">
                               <div className="flex items-center justify-between">
                                 <span className="font-semibold">{displayDate}</span>
