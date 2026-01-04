@@ -32,9 +32,11 @@ interface BookingCalendarProps {
   fullyBookedDates?: string[]; // 格式: ["2024-01-15", "2024-01-20"]
   onDateClick?: (date: string) => void; // 日期点击回调
   showDetails?: boolean; // 是否显示详情面板，默认为 true
+  availableTimeSlotsByDate?: Map<string, string[]>; // 每个日期的可用时间段
+  timeSlots?: string[]; // 所有时间段列表
 }
 
-export default function BookingCalendar({ appointments, onCancelAppointment, onConfirmAppointment, showCancelButton = false, showConfirmButton = false, fullyBookedDates = [], onDateClick, showDetails = true }: BookingCalendarProps) {
+export default function BookingCalendar({ appointments, onCancelAppointment, onConfirmAppointment, showCancelButton = false, showConfirmButton = false, fullyBookedDates = [], onDateClick, showDetails = true, availableTimeSlotsByDate, timeSlots = [] }: BookingCalendarProps) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -269,51 +271,85 @@ export default function BookingCalendar({ appointments, onCancelAppointment, onC
                       {format(day, "d")}
                     </div>
                     <div className="space-y-1">
-                      {dayAppointments.slice(0, 3).map((apt) => {
-                        const { displayTime } = formatDateTime(apt.date);
-                        const isCancelled = apt.status === "CANCELLED";
-                        const isConfirmed = apt.status === "CONFIRMED";
-                        const isPending = apt.status === "PENDING";
-                        
-                        let bgColor: string | undefined;
-                        let textColor = "white";
-                        
-                        if (isCancelled) {
-                          bgColor = "#f31260";
-                        } else if (isConfirmed) {
-                          bgColor = "#17c964";
-                        } else if (isPending) {
-                          bgColor = "#f5a524";
-                        }
-                        
-                        return (
-                          <div
-                            key={apt.id}
-                        onClick={() => {
-                          if (showDetails) {
-                            setSelectedAppointment(apt);
-                            setSelectedDate(formatDateTime(apt.date).date);
-                          } else if (onDateClick) {
-                            onDateClick(formatDateTime(apt.date).date);
+                      {!showDetails && availableTimeSlotsByDate ? (
+                        // 显示可用时间段模式（HomePage）
+                        (() => {
+                          const availableSlots = availableTimeSlotsByDate.get(dateStr) || [];
+                          if (availableSlots.length === 0) {
+                            return (
+                              <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 text-center py-1">
+                                Not available
+                              </div>
+                            );
                           }
-                        }}
-                            className={`text-[10px] sm:text-xs p-1 rounded cursor-pointer truncate ${
-                              bgColor
-                                ? "hover:opacity-80"
-                                : "bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-300 hover:bg-primary-200 dark:hover:bg-primary-900/50"
-                            }`}
-                            style={bgColor ? { backgroundColor: bgColor, color: textColor } : undefined}
-                            title={`${apt.title} - ${displayTime}`}
-                          >
-                            <div className="font-medium">{displayTime}</div>
-                            <div className="truncate">{apt.title}</div>
-                          </div>
-                        );
-                      })}
-                      {dayAppointments.length > 3 && (
-                        <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 text-center">
-                          +{dayAppointments.length - 3} more
-                        </div>
+                          return (
+                            <>
+                              <div className="text-[10px] sm:text-xs font-semibold text-primary-600 dark:text-primary-400 text-center">
+                                {availableSlots.length} slot{availableSlots.length > 1 ? 's' : ''} available
+                              </div>
+                              <div className="text-[9px] sm:text-[10px] text-gray-600 dark:text-gray-300 text-center space-y-0.5">
+                                {availableSlots.slice(0, 4).map((slot, idx) => (
+                                  <div key={idx}>{slot}</div>
+                                ))}
+                                {availableSlots.length > 4 && (
+                                  <div className="text-gray-400 dark:text-gray-500">
+                                    +{availableSlots.length - 4} more
+                                  </div>
+                                )}
+                              </div>
+                            </>
+                          );
+                        })()
+                      ) : (
+                        // 显示预约详情模式（原有逻辑）
+                        <>
+                          {dayAppointments.slice(0, 3).map((apt) => {
+                            const { displayTime } = formatDateTime(apt.date);
+                            const isCancelled = apt.status === "CANCELLED";
+                            const isConfirmed = apt.status === "CONFIRMED";
+                            const isPending = apt.status === "PENDING";
+                            
+                            let bgColor: string | undefined;
+                            let textColor = "white";
+                            
+                            if (isCancelled) {
+                              bgColor = "#f31260";
+                            } else if (isConfirmed) {
+                              bgColor = "#17c964";
+                            } else if (isPending) {
+                              bgColor = "#f5a524";
+                            }
+                            
+                            return (
+                              <div
+                                key={apt.id}
+                            onClick={() => {
+                              if (showDetails) {
+                                setSelectedAppointment(apt);
+                                setSelectedDate(formatDateTime(apt.date).date);
+                              } else if (onDateClick) {
+                                onDateClick(formatDateTime(apt.date).date);
+                              }
+                            }}
+                                className={`text-[10px] sm:text-xs p-1 rounded cursor-pointer truncate ${
+                                  bgColor
+                                    ? "hover:opacity-80"
+                                    : "bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-300 hover:bg-primary-200 dark:hover:bg-primary-900/50"
+                                }`}
+                                style={bgColor ? { backgroundColor: bgColor, color: textColor } : undefined}
+                                title={`${apt.title} - ${displayTime}`}
+                              >
+                                <div className="font-medium">{displayTime}</div>
+                                <div className="truncate">{apt.title}</div>
+                              </div>
+                            );
+                          })}
+                          {dayAppointments.length > 3 && (
+                            <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 text-center">
+                              +{dayAppointments.length - 3} more
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
