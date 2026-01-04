@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Card,
   CardBody,
@@ -301,7 +301,7 @@ export default function BookingForm({ onBookingSuccess }: BookingFormProps) {
               const selected = Array.from(keys)[0] as string;
               setFormData({ ...formData, employeeId: selected, date: null, time: "" });
             }}
-            isRequired
+  
             fullWidth
             description={isLoadingAppointments ? "Loading employee availability..." : undefined}
           >
@@ -322,13 +322,11 @@ export default function BookingForm({ onBookingSuccess }: BookingFormProps) {
               setFormData({ ...formData, title: selected });
             }}
             isRequired
-            isDisabled={services.length === 0 || !formData.employeeId}
+            isDisabled={services.length === 0}
             fullWidth
             description={
               services.length === 0
                 ? "No services available at the moment"
-                : !formData.employeeId
-                ? "Please select an employee first"
                 : undefined
             }
           >
@@ -356,11 +354,8 @@ export default function BookingForm({ onBookingSuccess }: BookingFormProps) {
             <Select
               label="Select Time"
               placeholder={
-                !formData.employeeId
-                  ? "Select employee first"
-                  : !formData.date
-                  ? "Select date first"
-                  : "Choose a time slot"
+                
+                "Choose a time slot"
               }
               selectedKeys={formData.time ? [formData.time] : []}
               onSelectionChange={(keys) => {
@@ -383,6 +378,7 @@ export default function BookingForm({ onBookingSuccess }: BookingFormProps) {
                 return (
                   <SelectItem
                     key={time}
+                    textValue={time}
                     isDisabled={isBooked}
                   >
                     {time} {isBooked ? "(Booked)" : ""}

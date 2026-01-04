@@ -86,12 +86,116 @@ export default function BookingCalendar({ appointments, onCancelAppointment, onC
     }
   };
 
+  // 处理 appointment 点击
+  const handleAppointmentClick = (apt: Appointment) => {
+    setSelectedAppointment(apt);
+    setSelectedDate(formatDateTime(apt.date).date);
+  };
+
+  // 渲染 appointment details 内容
+  const renderAppointmentDetails = (apt: Appointment | null) => {
+    if (!apt) return null;
+    
+    return (
+      <div className="space-y-4">
+        <Card className="bg-primary-50 dark:bg-primary-900/20">
+          <CardBody>
+            <div className="space-y-3">
+              <div>
+                <span className="text-sm text-gray-500 dark:text-gray-400">Title:</span>
+                <p className="font-semibold">{apt.title}</p>
+              </div>
+              <div>
+                <span className="text-sm text-gray-500 dark:text-gray-400">Date:</span>
+                <p className="font-semibold">{formatDateTime(apt.date).displayDate}</p>
+              </div>
+              <div>
+                <span className="text-sm text-gray-500 dark:text-gray-400">Time:</span>
+                <div className="mt-1">
+                  <Chip color="primary" size="sm">
+                    {formatDateTime(apt.date).displayTime}
+                  </Chip>
+                </div>
+              </div>
+              <div>
+                <span className="text-sm text-gray-500 dark:text-gray-400">Status:</span>
+                <div className="mt-1">
+                  <Chip 
+                    color={
+                      apt.status === "PENDING" ? "warning" :
+                      apt.status === "CONFIRMED" ? "success" :
+                      apt.status === "CANCELLED" ? "danger" :
+                      "default"
+                    } 
+                    size="sm"
+                  >
+                    {apt.status}
+                  </Chip>
+                </div>
+              </div>
+              {apt.description && (
+                <div>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">Description:</span>
+                  <p className="text-sm mt-1">{apt.description}</p>
+                </div>
+              )}
+            </div>
+          </CardBody>
+        </Card>
+        <div className="flex gap-2 mt-4">
+          {showConfirmButton && onConfirmAppointment && apt.status === "PENDING" && (
+            <Button
+              color="success"
+              variant="flat"
+              onPress={async () => {
+                if (window.confirm("Are you sure you want to confirm this appointment?")) {
+                  try {
+                    await onConfirmAppointment(apt.id);
+                    setSelectedAppointment(null);
+                    setSelectedDate(null);
+                    scrollToCalendar();
+                  } catch (error) {
+                    console.error("Error confirming appointment:", error);
+                    alert("Failed to confirm appointment. Please try again.");
+                  }
+                }
+              }}
+            >
+              Confirm Appointment
+            </Button>
+          )}
+          {showCancelButton && onCancelAppointment && apt.status !== "CANCELLED" && (
+            <Button
+              color="danger"
+              variant="flat"
+              onPress={async () => {
+                if (window.confirm("Are you sure you want to cancel this appointment?")) {
+                  try {
+                    await onCancelAppointment(apt.id);
+                    setSelectedAppointment(null);
+                    setSelectedDate(null);
+                    scrollToCalendar();
+                  } catch (error) {
+                    console.error("Error canceling appointment:", error);
+                    alert("Failed to cancel appointment. Please try again.");
+                  }
+                }
+              }}
+            >
+              Cancel Appointment
+            </Button>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div ref={calendarRef}>
       <Card>
         <CardHeader>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between w-full gap-4">
-          <h3 className="text-xl sm:text-2xl font-semibold">My Appointments</h3>
+          <h3 className="text-xl sm:text-2xl font-semibold">Calendar</h3>
           <div className="flex items-center justify-center sm:justify-end gap-2">
             <Button
               size="sm"
@@ -234,94 +338,7 @@ export default function BookingCalendar({ appointments, onCancelAppointment, onC
                     ✕
                   </Button>
                 </div>
-                <Card className="bg-primary-50 dark:bg-primary-900/20">
-                  <CardBody>
-                    <div className="space-y-3">
-                      <div>
-                        <span className="text-sm text-gray-500 dark:text-gray-400">Title:</span>
-                        <p className="font-semibold">{selectedAppointment.title}</p>
-                      </div>
-                      <div>
-                        <span className="text-sm text-gray-500 dark:text-gray-400">Date:</span>
-                        <p className="font-semibold">{formatDateTime(selectedAppointment.date).displayDate}</p>
-                      </div>
-                      <div>
-                        <span className="text-sm text-gray-500 dark:text-gray-400">Time:</span>
-                        <div className="mt-1">
-                          <Chip color="primary" size="sm">
-                            {formatDateTime(selectedAppointment.date).displayTime}
-                          </Chip>
-                        </div>
-                      </div>
-                      <div>
-                        <span className="text-sm text-gray-500 dark:text-gray-400">Status:</span>
-                        <div className="mt-1">
-                          <Chip 
-                            color={
-                              selectedAppointment.status === "PENDING" ? "warning" :
-                              selectedAppointment.status === "CONFIRMED" ? "success" :
-                              selectedAppointment.status === "CANCELLED" ? "danger" :
-                              "default"
-                            } 
-                            size="sm"
-                          >
-                            {selectedAppointment.status}
-                          </Chip>
-                        </div>
-                      </div>
-                      {selectedAppointment.description && (
-                        <div>
-                          <span className="text-sm text-gray-500 dark:text-gray-400">Description:</span>
-                          <p className="text-sm mt-1">{selectedAppointment.description}</p>
-                        </div>
-                      )}
-                    </div>
-                  </CardBody>
-                </Card>
-                <div className="flex gap-2 mt-4">
-                  {showConfirmButton && onConfirmAppointment && selectedAppointment.status === "PENDING" && (
-                    <Button
-                      color="success"
-                      variant="flat"
-                      onPress={async () => {
-                        if (window.confirm("Are you sure you want to confirm this appointment?")) {
-                          try {
-                            await onConfirmAppointment(selectedAppointment.id);
-                            setSelectedAppointment(null);
-                            setSelectedDate(null);
-                            scrollToCalendar();
-                          } catch (error) {
-                            console.error("Error confirming appointment:", error);
-                            alert("Failed to confirm appointment. Please try again.");
-                          }
-                        }
-                      }}
-                    >
-                      Confirm Appointment
-                    </Button>
-                  )}
-                  {showCancelButton && onCancelAppointment && selectedAppointment.status !== "CANCELLED" && (
-                    <Button
-                      color="danger"
-                      variant="flat"
-                      onPress={async () => {
-                        if (window.confirm("Are you sure you want to cancel this appointment?")) {
-                          try {
-                            await onCancelAppointment(selectedAppointment.id);
-                            setSelectedAppointment(null);
-                            setSelectedDate(null);
-                            scrollToCalendar();
-                          } catch (error) {
-                            console.error("Error canceling appointment:", error);
-                            alert("Failed to cancel appointment. Please try again.");
-                          }
-                        }
-                      }}
-                    >
-                      Cancel Appointment
-                    </Button>
-                  )}
-                </div>
+                {renderAppointmentDetails(selectedAppointment)}
               </div>
             ) : selectedDate ? (
               <div className="space-y-4">
@@ -372,12 +389,11 @@ export default function BookingCalendar({ appointments, onCancelAppointment, onC
                         <Card
                           key={apt.id}
                           className="cursor-pointer hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
-                          onClick={() => {
-                            setSelectedDate(formatDateTime(apt.date).date);
-                            setSelectedAppointment(apt);
-                          }}
                         >
-                          <CardBody>
+                          <CardBody
+                            onClick={() => handleAppointmentClick(apt)}
+                            className="cursor-pointer"
+                          >
                             <div className="space-y-2">
                               <div className="flex items-center justify-between">
                                 <span className="font-semibold">{displayDate}</span>
