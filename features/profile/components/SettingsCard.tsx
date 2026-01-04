@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Card, CardBody, CardHeader, Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Input, useDisclosure } from "@heroui/react";
 import { useAuth } from "@/contexts/AuthContext";
-import { apiPut } from "@/lib/api-client";
+import { apiPut, apiPost } from "@/lib/api-client";
 
 export default function SettingsCard() {
     const { user, setUser } = useAuth();
@@ -33,7 +33,7 @@ export default function SettingsCard() {
         setErrorMessage("");
         setSuccessMessage("");
 
-        // 验证密码
+        // 如果有密码更改操作，先验证当前密码
         if (newPassword || confirmPassword || currentPassword) {
             if (!currentPassword) {
                 setErrorMessage("Please enter your current password");
@@ -57,9 +57,27 @@ export default function SettingsCard() {
         try {
             const updateData: any = {};
 
-            // 如果有新密码，添加密码更新
-            if (newPassword) {
-                updateData.password = newPassword;
+            // 如果有新密码，先验证当前密码
+            if (newPassword && currentPassword) {
+                if (!user?.email) {
+                    setErrorMessage("User email not found");
+                    setIsSubmitting(false);
+                    return;
+                }
+
+                try {
+                    // 使用 POST /auth/login 验证当前密码
+                    await apiPost("auth/login", {
+                        email: user.email,
+                        password: currentPassword
+                    }, { skipAuth: true });
+                    // 如果验证成功，添加新密码到更新数据
+                    updateData.password = newPassword;
+                } catch (error) {
+                    setErrorMessage("Current password is incorrect");
+                    setIsSubmitting(false);
+                    return;
+                }
             }
 
             // 如果有新照片，添加照片更新
@@ -79,7 +97,13 @@ export default function SettingsCard() {
                 };
                 reader.readAsDataURL(profileImage);
             } else {
-                await performUpdate(updateData);
+                // 如果有更新数据（新密码），执行更新
+                if (Object.keys(updateData).length > 0) {
+                    await performUpdate(updateData);
+                } else {
+                    setErrorMessage("No changes to save");
+                    setIsSubmitting(false);
+                }
             }
         } catch (error) {
             console.error("Error updating profile:", error);
