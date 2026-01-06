@@ -58,6 +58,14 @@ export default function QuickActionsCard({ adminUser }: QuickActionsCardProps) {
             Manage Employees
           </Button>
         )}
+        <Button
+          color="default"
+          fullWidth
+          variant="flat"
+          onPress={() => router.push("/admin/Scheduling")}
+        >
+          Employee Scheduling Management
+        </Button>
       </CardBody>
     </Card>
   );
