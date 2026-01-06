@@ -18,6 +18,7 @@ import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api-client";
 import { User, UserListResponse } from "@/types/api";
 import SearchCard from "./components/SearchCard";
 import UsersTableCard from "./components/UsersTableCard";
+import QuickActionsCard from "./components/QuickActionsCard";
 import { getUserWelcomeEmail } from "@/lib/email-templates";
 
 export default function ManageUsersPage() {
@@ -36,6 +37,8 @@ export default function ManageUsersPage() {
     role: "CUSTOMER",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [adminUser, setAdminUser] = useState<{ email: string; role: string } | null>(null);
+  const [isNavExpanded, setIsNavExpanded] = useState(true);
 
   useEffect(() => {
     // Check for admin session
@@ -43,6 +46,8 @@ export default function ManageUsersPage() {
     if (!stored) {
       router.push("/admin");
     } else {
+      const user = JSON.parse(stored);
+      setAdminUser(user);
       fetchUsers();
     }
   }, [router]);
@@ -201,9 +206,28 @@ export default function ManageUsersPage() {
     );
   }
 
+  if (!adminUser) {
+    return null;
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-4 md:py-8 px-4">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
+      {/* 左侧导航栏 */}
+      <QuickActionsCard 
+        adminUser={adminUser} 
+        isExpanded={isNavExpanded}
+        onToggle={() => setIsNavExpanded(!isNavExpanded)}
+      />
+      
+      {/* 主内容区 */}
+      <main 
+        className={`
+          flex-1 transition-all duration-300 ease-in-out
+          lg:${isNavExpanded ? 'ml-64' : 'ml-20'}
+        `}
+      >
+        <div className="py-4 md:py-8 px-3 sm:px-4">
+          <div className="max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-6 md:mb-8 gap-4">
           <div>
             <h1 className="text-2xl md:text-4xl font-bold text-gray-900 dark:text-white">
@@ -252,7 +276,10 @@ export default function ManageUsersPage() {
           onOpenChange={onOpenChange} 
           size="2xl" 
           scrollBehavior="inside"
-          className="max-w-[95vw]"
+          classNames={{
+            base: "max-w-[95vw] sm:max-w-2xl",
+            body: "py-4 sm:py-6",
+          }}
         >
           <ModalContent>
             {(onClose) => (
@@ -345,14 +372,19 @@ export default function ManageUsersPage() {
                     </Select>
                   </div>
                 </ModalBody>
-                <ModalFooter>
-                  <Button variant="light" onPress={onClose}>
+                <ModalFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
+                  <Button 
+                    variant="light" 
+                    onPress={onClose}
+                    className="w-full sm:w-auto"
+                  >
                     Cancel
                   </Button>
                   <Button
                     color="primary"
                     onPress={handleSubmit}
                     isLoading={isSubmitting}
+                    className="w-full sm:w-auto"
                   >
                     {editingUser ? "Update" : "Create"}
                   </Button>
@@ -361,7 +393,9 @@ export default function ManageUsersPage() {
             )}
           </ModalContent>
         </Modal>
-      </div>
+          </div>
+        </div>
+      </main>
     </div>
   );
 }
