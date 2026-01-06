@@ -17,12 +17,24 @@ export const useAdminDashboard = () => {
     useEffect(() => {
         const stored = localStorage.getItem("adminUser");
         if (stored) {
-            const user = JSON.parse(stored);
-            setAdminUser(user);
-            fetchStats();
+            try {
+                const user = JSON.parse(stored);
+                setAdminUser(user);
+                fetchStats();
 
-            if (user.role === "EMPLOYEE" || user.role === "employee") {
-                fetchAppointments(user.id);
+                // 检查是否为员工角色（支持多种格式）
+                const userRole = user.role?.toUpperCase();
+                if (userRole === "EMPLOYEE") {
+                    if (user.id) {
+                        console.log("Fetching appointments for employee:", user.id);
+                        fetchAppointments(user.id);
+                    } else {
+                        console.error("Employee ID is missing:", user);
+                    }
+                }
+            } catch (error) {
+                console.error("Error parsing adminUser from localStorage:", error);
+                router.push("/admin");
             }
         } else {
             router.push("/admin");

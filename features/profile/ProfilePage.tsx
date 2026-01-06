@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import BookingCalendar from "@/components/BookingCalendar";
-import BookingForm from "@/components/BookingForm";
+import BookingForm from "@/features/profile/components/BookingForm";
 import { useProfileStore } from "./store/useProfileStore";
 import ProfileHeader from "./components/ProfileHeader";
 import ProfileCard from "./components/ProfileCard";

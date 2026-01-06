@@ -18,6 +18,7 @@ import {
 } from "@heroui/react";
 import { apiGet } from "@/lib/api-client";
 import { User, UserListResponse } from "@/types/api";
+import EmployeeAvailabilityForm from "./EmployeeAvailabilityForm";
 
 type Employee = { id: string; name: string; role?: string };
 type Assignment = { employeeId: string; date: string }; // date: YYYY-MM-DD
@@ -49,7 +50,12 @@ function fmtWeekRange(days: Date[]) {
   return `${start} — ${end}`;
 }
 
-export default function DayStaffSchedule() {
+interface DayStaffScheduleProps {
+  readOnly?: boolean; // 如果为 true，则只显示不能更改
+  employeeId?: string; // 员工ID，用于在只读模式下显示可用性表单
+}
+
+export default function DayStaffSchedule({ readOnly = false, employeeId }: DayStaffScheduleProps) {
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date()));
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -140,6 +146,19 @@ export default function DayStaffSchedule() {
 
   return (
     <>
+      {/* 如果是只读模式且提供了员工ID，显示可用性表单 */}
+      {readOnly && employeeId && (
+        <div className="mb-6">
+          <EmployeeAvailabilityForm 
+            employeeId={employeeId}
+            onSuccess={() => {
+              // 可以在这里刷新排班数据
+              console.log("Availability submitted successfully");
+            }}
+          />
+        </div>
+      )}
+
       <Card className="w-full">
         <CardHeader className="px-3 sm:px-6">
           <div className="flex w-full flex-col gap-3 sm:gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -220,27 +239,31 @@ export default function DayStaffSchedule() {
                                 ) : null}
                               </div>
 
-                              <Button
-                                size="sm"
-                                variant="light"
-                                onPress={() => removeAssignment(dateStr, a.employeeId)}
-                                className="w-full sm:w-auto text-xs sm:text-sm"
-                              >
-                                Remove
-                              </Button>
+                              {!readOnly && (
+                                <Button
+                                  size="sm"
+                                  variant="light"
+                                  onPress={() => removeAssignment(dateStr, a.employeeId)}
+                                  className="w-full sm:w-auto text-xs sm:text-sm"
+                                >
+                                  Remove
+                                </Button>
+                              )}
                             </CardBody>
                           </Card>
                         );
                       })}
 
-                      {/* Add staff area */}
-                      <button
-                        type="button"
-                        onClick={() => openAddStaff(dateStr)}
-                        className="mt-1 w-full rounded-xl border border-dashed border-default-300 bg-default-50/40 px-2 sm:px-3 py-2 sm:py-3 text-xs sm:text-sm text-foreground-600 hover:bg-default-100 active:bg-default-200 transition-colors touch-manipulation"
-                      >
-                        + Add staff
-                      </button>
+                      {/* Add staff area - 只在非只读模式下显示 */}
+                      {!readOnly && (
+                        <button
+                          type="button"
+                          onClick={() => openAddStaff(dateStr)}
+                          className="mt-1 w-full rounded-xl border border-dashed border-default-300 bg-default-50/40 px-2 sm:px-3 py-2 sm:py-3 text-xs sm:text-sm text-foreground-600 hover:bg-default-100 active:bg-default-200 transition-colors touch-manipulation"
+                        >
+                          + Add staff
+                        </button>
+                      )}
                     </div>
                   </CardBody>
                 </Card>

@@ -8,6 +8,7 @@ import RecentOrdersCard from "./components/RecentOrdersCard";
 import QuickActionsCard from "./components/QuickActionsCard";
 import MyAppointmentsSection from "./components/MyAppointmentsSection";
 import AdminDashboardLoadingSkeleton from "./components/AdminDashboardLoadingSkeleton";
+import DayStaffSchedule from "./components/DayStaffSchedule";
 
 export default function AdminDashboardPage() {
     const {
@@ -63,10 +64,13 @@ export default function AdminDashboardPage() {
                         </div>
 
                         {isEmployee && (
-                            <MyAppointmentsSection 
-                                appointments={appointments} 
-                                onAppointmentsUpdate={handleAppointmentsUpdate}
-                            />
+                            <>
+
+                                <MyAppointmentsSection 
+                                    appointments={appointments} 
+                                    onAppointmentsUpdate={handleAppointmentsUpdate}
+                                />
+                            </>
                         )}
                     </div>
                 </div>

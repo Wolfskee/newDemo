@@ -8,7 +8,7 @@ import QuickActionsCard from "./components/QuickActionsCard";
 
 export default function SchedulingPage() {
     const router = useRouter();
-    const [adminUser, setAdminUser] = useState<{ email: string; role: string } | null>(null);
+    const [adminUser, setAdminUser] = useState<{ id?: string; email: string; role: string } | null>(null);
     const [isNavExpanded, setIsNavExpanded] = useState(true);
 
     useEffect(() => {
@@ -64,7 +64,10 @@ export default function SchedulingPage() {
                     </Button>
                 </div>
 
-                    <DayStaffSchedule />
+                    <DayStaffSchedule 
+                        readOnly={adminUser.role === "EMPLOYEE" || adminUser.role === "employee"}
+                        employeeId={adminUser.role === "EMPLOYEE" || adminUser.role === "employee" ? adminUser.id : undefined}
+                    />
                     </div>
                 </div>
             </main>
