@@ -45,6 +45,7 @@ export default function BookingForm({ onBookingSuccess }: BookingFormProps) {
   const [employees, setEmployees] = useState<User[]>([]);
   const [services, setServices] = useState<Item[]>([]);
   const [employeeAppointments, setEmployeeAppointments] = useState<Appointment[]>([]);
+  const [allEmployeesAppointments, setAllEmployeesAppointments] = useState<Map<string, Appointment[]>>(new Map());
   const [isLoadingAppointments, setIsLoadingAppointments] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState("");
@@ -56,6 +57,19 @@ export default function BookingForm({ onBookingSuccess }: BookingFormProps) {
     fetchServices();
   }, []);
 
+  // 成功消息自动消失（5秒后）
+  useEffect(() => {
+    if (submitMessage) {
+      const timer = setTimeout(() => {
+        setSubmitMessage("");
+      }, 5000); // 5秒后清除消息
+
+      return () => {
+        clearTimeout(timer);
+      };
+    }
+  }, [submitMessage]);
+
   // 当选择员工时，获取该员工的预约
   useEffect(() => {
     if (formData.employeeId) {
@@ -66,6 +80,84 @@ export default function BookingForm({ onBookingSuccess }: BookingFormProps) {
       setEmployeeAppointments([]);
     }
   }, [formData.employeeId]);
+
+  // 当日期改变时，如果没有选择员工，获取所有员工的预约
+  useEffect(() => {
+    if (!formData.employeeId && formData.date && employees.length > 0) {
+      fetchAllEmployeesAppointments();
+    }
+  }, [formData.date, formData.employeeId, employees.length]);
+
+  // 获取所有员工的预约信息
+  const fetchAllEmployeesAppointments = async () => {
+    if (employees.length === 0) return;
+    
+    setIsLoadingAppointments(true);
+    try {
+      const appointmentsMap = new Map<string, Appointment[]>();
+      
+      // 获取当前日期
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      const currentDate = `${year}-${month}-${day}`;
+      
+      // 并行获取所有员工的预约
+      const appointmentPromises = employees.map(async (employee) => {
+        try {
+          const sanitizedEmployeeId = encodeURIComponent(employee.id.trim());
+          const endpoint = `appointment/user/${sanitizedEmployeeId}`;
+          
+          let appointments: Appointment[] = [];
+          try {
+            appointments = await apiGet<Appointment[]>(endpoint, {
+              params: {
+                date: currentDate
+              }
+            });
+          } catch (apiError) {
+            // 如果端点失败，使用备用方案
+            try {
+              const data: AppointmentListResponse = await apiGet<AppointmentListResponse>("appointment");
+              appointments = data.appointments || [];
+            } catch (fallbackError) {
+              console.error(`Failed to fetch appointments for employee ${employee.id}:`, fallbackError);
+              return { employeeId: employee.id, appointments: [] };
+            }
+          }
+          
+          // 过滤出该员工的预约，排除已取消的预约
+          const employeeAppts = appointments.filter(
+            (apt) => apt.employeeId === employee.id && apt.status !== "CANCELLED"
+          );
+          
+          // 过滤出今天及未来的预约
+          const todayDate = new Date(currentDate);
+          const futureAppts = employeeAppts.filter((apt) => {
+            const appointmentDate = new Date(apt.date);
+            return appointmentDate >= todayDate;
+          });
+          
+          return { employeeId: employee.id, appointments: futureAppts };
+        } catch (error) {
+          console.error(`Error fetching appointments for employee ${employee.id}:`, error);
+          return { employeeId: employee.id, appointments: [] };
+        }
+      });
+      
+      const results = await Promise.all(appointmentPromises);
+      results.forEach(({ employeeId, appointments }) => {
+        appointmentsMap.set(employeeId, appointments);
+      });
+      
+      setAllEmployeesAppointments(appointmentsMap);
+    } catch (error) {
+      console.error("Error fetching all employees appointments:", error);
+    } finally {
+      setIsLoadingAppointments(false);
+    }
+  };
 
   const fetchEmployeeAppointments = async (employeeId: string) => {
     setIsLoadingAppointments(true);
@@ -123,23 +215,86 @@ export default function BookingForm({ onBookingSuccess }: BookingFormProps) {
     }
   };
 
-  // 检查某个日期和时间是否已被预订
-  const isDateTimeBooked = (date: CalendarDate, time: string): boolean => {
+  // 检查某个日期和时间是否已被预订（针对特定员工）
+  const isDateTimeBooked = (date: CalendarDate, time: string, employeeId?: string): boolean => {
     if (!date || !time) return false;
     
     const dateString = `${date.year}-${String(date.month).padStart(2, "0")}-${String(date.day).padStart(2, "0")}`;
     
-    return employeeAppointments.some((apt) => {
-      const appointmentDate = new Date(apt.date);
-      const appointmentDateString = appointmentDate.toISOString().split("T")[0];
-      const appointmentTime = appointmentDate.toLocaleTimeString("en-US", {
-        hour12: false,
-        hour: "2-digit",
-        minute: "2-digit",
+    // 如果指定了员工ID，检查该员工的预约
+    if (employeeId) {
+      return employeeAppointments.some((apt) => {
+        const appointmentDate = new Date(apt.date);
+        const appointmentDateString = appointmentDate.toISOString().split("T")[0];
+        const appointmentTime = appointmentDate.toLocaleTimeString("en-US", {
+          hour12: false,
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+        
+        return appointmentDateString === dateString && appointmentTime === time;
+      });
+    }
+    
+    // 如果没有指定员工，检查是否所有员工在这个日期和时间都被预订了
+    // 只有当所有员工都被预订时，才返回 true
+    if (employees.length === 0) return false;
+    
+    const dateStringForCheck = dateString;
+    const timeForCheck = time;
+    
+    // 检查每个员工是否在这个日期和时间有预约
+    const allEmployeesBooked = employees.every((employee) => {
+      const employeeAppts = allEmployeesAppointments.get(employee.id) || [];
+      
+      return employeeAppts.some((apt) => {
+        const appointmentDate = new Date(apt.date);
+        const appointmentDateString = appointmentDate.toISOString().split("T")[0];
+        const appointmentTime = appointmentDate.toLocaleTimeString("en-US", {
+          hour12: false,
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+        
+        return appointmentDateString === dateStringForCheck && appointmentTime === timeForCheck;
+      });
+    });
+    
+    return allEmployeesBooked;
+  };
+
+  // 查找在指定日期和时间可用的员工
+  const findAvailableEmployee = (date: CalendarDate, time: string): User | null => {
+    if (!date || !time || employees.length === 0) return null;
+    
+    const dateString = `${date.year}-${String(date.month).padStart(2, "0")}-${String(date.day).padStart(2, "0")}`;
+    
+    // 获取所有可用的员工
+    const availableEmployees = employees.filter((employee) => {
+      const employeeAppts = allEmployeesAppointments.get(employee.id) || [];
+      
+      // 检查该员工在这个日期和时间是否有预约
+      const hasConflict = employeeAppts.some((apt) => {
+        const appointmentDate = new Date(apt.date);
+        const appointmentDateString = appointmentDate.toISOString().split("T")[0];
+        const appointmentTime = appointmentDate.toLocaleTimeString("en-US", {
+          hour12: false,
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+        
+        return appointmentDateString === dateString && appointmentTime === time;
       });
       
-      return appointmentDateString === dateString && appointmentTime === time;
+      return !hasConflict;
     });
+    
+    // 如果没有可用的员工，返回 null
+    if (availableEmployees.length === 0) return null;
+    
+    // 随机选择一个可用的员工
+    const randomIndex = Math.floor(Math.random() * availableEmployees.length);
+    return availableEmployees[randomIndex];
   };
 
 
@@ -211,8 +366,8 @@ export default function BookingForm({ onBookingSuccess }: BookingFormProps) {
     setErrorMessage("");
 
     // 验证表单
-    if (!formData.title || !formData.date || !formData.time || !formData.employeeId) {
-      setErrorMessage("Please fill in all required fields");
+    if (!formData.title || !formData.date || !formData.time) {
+      setErrorMessage("Please fill in all required fields (Service, Date, and Time)");
       setIsSubmitting(false);
       return;
     }
@@ -224,6 +379,37 @@ export default function BookingForm({ onBookingSuccess }: BookingFormProps) {
     }
 
     try {
+      // 如果没有选择员工，自动分配一个可用的员工
+      let selectedEmployeeId = formData.employeeId;
+      let selectedEmployee: User | undefined;
+      
+      if (!selectedEmployeeId) {
+        // 确保已获取所有员工的预约信息
+        if (allEmployeesAppointments.size === 0 && employees.length > 0) {
+          await fetchAllEmployeesAppointments();
+        }
+        
+        // 查找可用的员工
+        const availableEmployee = findAvailableEmployee(formData.date!, formData.time);
+        
+        if (!availableEmployee) {
+          setErrorMessage("No employees are available at the selected date and time. Please choose a different time slot.");
+          setIsSubmitting(false);
+          return;
+        }
+        
+        selectedEmployeeId = availableEmployee.id;
+        selectedEmployee = availableEmployee;
+      } else {
+        // 如果已选择员工，验证该员工是否可用
+        if (isDateTimeBooked(formData.date!, formData.time, selectedEmployeeId)) {
+          setErrorMessage("The selected employee is not available at the chosen time. Please select a different time or employee.");
+          setIsSubmitting(false);
+          return;
+        }
+        selectedEmployee = employees.find((emp) => emp.id === selectedEmployeeId);
+      }
+      
       // 组合日期和时间为 ISO 格式
       const dateString = formData.date
         ? `${formData.date.year}-${String(formData.date.month).padStart(2, "0")}-${String(formData.date.day).padStart(2, "0")}`
@@ -231,8 +417,19 @@ export default function BookingForm({ onBookingSuccess }: BookingFormProps) {
       
       // 将时间转换为 24 小时格式
       const [hours, minutes] = formData.time.split(":");
+      
+      // 创建日期时间对象（使用本地时区）
+      // 注意：这里使用本地时区创建日期，然后转换为 ISO 字符串
+      // 如果后端需要 UTC 时间，toISOString() 会自动转换
       const dateTime = new Date(`${dateString}T${hours}:${minutes}:00`);
+      
+      // 验证日期时间是否有效
+      if (isNaN(dateTime.getTime())) {
+        throw new Error("Invalid date or time selected");
+      }
+      
       const isoDateTime = dateTime.toISOString();
+      console.log("Date string:", dateString, "Time:", formData.time, "ISO DateTime:", isoDateTime);
 
       const appointmentData = {
         title: formData.title,
@@ -240,25 +437,55 @@ export default function BookingForm({ onBookingSuccess }: BookingFormProps) {
         date: isoDateTime,
         status: "PENDING",
         customerId: user.id,
-        employeeId: formData.employeeId,
+        employeeId: selectedEmployeeId,
       };
 
-      await apiPost("appointment", appointmentData);
+      console.log("Submitting appointment:", appointmentData);
 
-      // 发送确认邮件
-      const selectedEmployee = employees.find((emp) => emp.id === formData.employeeId);
-      const emailSent = await sendAppointmentEmail(appointmentData, selectedEmployee);
+      // 创建预约
+      let createdAppointment;
+      try {
+        createdAppointment = await apiPost("appointment", appointmentData);
+        console.log("Appointment created successfully:", createdAppointment);
+        
+        // 验证返回的数据
+        if (!createdAppointment || (createdAppointment && !createdAppointment.id)) {
+          throw new Error("Appointment creation failed: Invalid response from server");
+        }
+      } catch (apiError) {
+        console.error("Error creating appointment:", apiError);
+        throw apiError; // 重新抛出错误，让 catch 块处理
+      }
+
+      // 发送确认邮件（即使邮件发送失败，也不影响预约创建）
+      let emailSent = false;
+      try {
+        emailSent = await sendAppointmentEmail(appointmentData, selectedEmployee);
+      } catch (emailError) {
+        console.error("Email sending failed, but appointment was created:", emailError);
+        // 邮件发送失败不影响预约创建，继续执行
+      }
 
       // 成功消息 - 根据邮件发送状态显示不同的消息
+      const employeeName = selectedEmployee?.username || selectedEmployee?.email || "an employee";
       if (emailSent) {
-        setSubmitMessage("Booking Confirmed! ✓ A confirmation email has been sent to your email address.");
+        setSubmitMessage(
+          `Booking Confirmed! ✓ A confirmation email has been sent to your email address. ${!formData.employeeId ? `Assigned to: ${employeeName}` : ""}`
+        );
       } else {
-        setSubmitMessage("Appointment created successfully! However, the confirmation email could not be sent.");
+        setSubmitMessage(
+          `Appointment created successfully! However, the confirmation email could not be sent. ${!formData.employeeId ? `Assigned to: ${employeeName}` : ""}`
+        );
       }
       
       // 重新获取员工预约以更新可用时间
-      if (formData.employeeId) {
-        await fetchEmployeeAppointments(formData.employeeId);
+      if (selectedEmployeeId) {
+        await fetchEmployeeAppointments(selectedEmployeeId);
+      }
+      
+      // 如果没有选择员工，重新获取所有员工的预约
+      if (!formData.employeeId) {
+        await fetchAllEmployeesAppointments();
       }
       
       setFormData({
@@ -266,7 +493,7 @@ export default function BookingForm({ onBookingSuccess }: BookingFormProps) {
         description: "",
         date: null,
         time: "",
-        employeeId: formData.employeeId, // 保持选中的员工
+        employeeId: "", // 重置员工选择
       });
       
       // 调用成功回调
@@ -275,11 +502,31 @@ export default function BookingForm({ onBookingSuccess }: BookingFormProps) {
       }
     } catch (error) {
       console.error("Error submitting appointment:", error);
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "Failed to submit appointment request. Please try again."
-      );
+      
+      // 提供更详细的错误信息
+      let errorMsg = "Failed to submit appointment request. Please try again.";
+      
+      if (error instanceof Error) {
+        errorMsg = error.message;
+        
+        // 根据错误类型提供更友好的错误消息
+        if (error.message.includes("401") || error.message.includes("Unauthorized")) {
+          errorMsg = "You are not authorized. Please log in again.";
+        } else if (error.message.includes("403") || error.message.includes("Forbidden")) {
+          errorMsg = "You don't have permission to create appointments.";
+        } else if (error.message.includes("400") || error.message.includes("Bad Request")) {
+          errorMsg = "Invalid appointment data. Please check your selections.";
+        } else if (error.message.includes("409") || error.message.includes("Conflict")) {
+          errorMsg = "This time slot is already booked. Please choose a different time.";
+        } else if (error.message.includes("404") || error.message.includes("Not Found")) {
+          errorMsg = "Service endpoint not found. Please contact support.";
+        } else if (error.message.includes("500") || error.message.includes("Internal Server Error")) {
+          errorMsg = "Server error. Please try again later.";
+        }
+      }
+      
+      setErrorMessage(errorMsg);
+      setSubmitMessage(""); // 清除任何成功消息
     } finally {
       setIsSubmitting(false);
     }
@@ -292,18 +539,23 @@ export default function BookingForm({ onBookingSuccess }: BookingFormProps) {
       </CardHeader>
       <CardBody>
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* 1. 先选择员工 */}
+          {/* 1. 选择员工（可选） */}
           <Select
-            label="Select Employee"
-            placeholder="Choose an employee"
+            label="Select Employee (Optional)"
+            placeholder="Choose an employee or leave empty for auto-assignment"
             selectedKeys={formData.employeeId ? [formData.employeeId] : []}
             onSelectionChange={(keys) => {
               const selected = Array.from(keys)[0] as string;
-              setFormData({ ...formData, employeeId: selected, date: null, time: "" });
+              setFormData({ ...formData, employeeId: selected || "", date: null, time: "" });
             }}
-  
             fullWidth
-            description={isLoadingAppointments ? "Loading employee availability..." : undefined}
+            description={
+              isLoadingAppointments 
+                ? "Loading employee availability..." 
+                : formData.employeeId 
+                ? undefined 
+                : "If not selected, an available employee will be automatically assigned"
+            }
           >
             {employees.map((employee) => (
               <SelectItem key={employee.id}>
@@ -322,7 +574,6 @@ export default function BookingForm({ onBookingSuccess }: BookingFormProps) {
               setFormData({ ...formData, title: selected });
             }}
             isRequired
-            isDisabled={services.length === 0}
             fullWidth
             description={
               services.length === 0
@@ -337,7 +588,7 @@ export default function BookingForm({ onBookingSuccess }: BookingFormProps) {
             ))}
           </Select>
 
-          {/* 3. 选择日期和时间 - 只有在选择了员工后才启用 */}
+          {/* 3. 选择日期和时间 */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <DatePicker
               label="Select Date"
@@ -346,35 +597,32 @@ export default function BookingForm({ onBookingSuccess }: BookingFormProps) {
                 setFormData({ ...formData, date, time: "" }); // 日期改变时清除时间选择
               }}
               isRequired
-              isDisabled={!formData.employeeId}
               minValue={parseDate(new Date().toISOString().split("T")[0])}
               className="w-full"
-              description={!formData.employeeId ? "Please select an employee first" : undefined}
             />
             <Select
               label="Select Time"
-              placeholder={
-                
-                "Choose a time slot"
-              }
+              placeholder="Choose a time slot"
               selectedKeys={formData.time ? [formData.time] : []}
               onSelectionChange={(keys) => {
                 const selected = Array.from(keys)[0] as string;
                 setFormData({ ...formData, time: selected });
               }}
               isRequired
-              isDisabled={!formData.employeeId || !formData.date}
+              isDisabled={!formData.date}
               fullWidth
               description={
-                !formData.employeeId
-                  ? "Please select an employee first"
-                  : !formData.date
+                !formData.date
                   ? "Please select a date first"
+                  : !formData.employeeId
+                  ? "Checking availability across all employees..."
                   : undefined
               }
             >
               {timeSlots.map((time) => {
-                const isBooked = formData.date ? isDateTimeBooked(formData.date, time) : false;
+                const isBooked = formData.date 
+                  ? isDateTimeBooked(formData.date, time, formData.employeeId || undefined) 
+                  : false;
                 return (
                   <SelectItem
                     key={time}

@@ -19,6 +19,7 @@ import {
 import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api-client";
 import { Item, ItemListResponse } from "@/types/api";
 import ProductsTableCard from "./components/ProductsTableCard";
+import QuickActionsCard from "./components/QuickActionsCard";
 
 export default function ManageProductsPage() {
   const router = useRouter();
@@ -37,12 +38,16 @@ export default function ManageProductsPage() {
   });
   const [imagePreview, setImagePreview] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [adminUser, setAdminUser] = useState<{ email: string; role: string } | null>(null);
+  const [isNavExpanded, setIsNavExpanded] = useState(true);
 
   useEffect(() => {
     const stored = localStorage.getItem("adminUser");
     if (!stored) {
       router.push("/admin");
     } else {
+      const user = JSON.parse(stored);
+      setAdminUser(user);
       fetchProducts();
     }
   }, [router]);
@@ -158,9 +163,28 @@ export default function ManageProductsPage() {
     );
   }
 
+  if (!adminUser) {
+    return null;
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-4 md:py-8 px-4">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
+      {/* 左侧导航栏 */}
+      <QuickActionsCard 
+        adminUser={adminUser} 
+        isExpanded={isNavExpanded}
+        onToggle={() => setIsNavExpanded(!isNavExpanded)}
+      />
+      
+      {/* 主内容区 */}
+      <main 
+        className={`
+          flex-1 transition-all duration-300 ease-in-out
+          lg:${isNavExpanded ? 'ml-64' : 'ml-20'}
+        `}
+      >
+        <div className="py-4 md:py-8 px-3 sm:px-4">
+          <div className="max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-6 md:mb-8 gap-4">
           <div>
             <h1 className="text-2xl md:text-4xl font-bold text-gray-900 dark:text-white">
@@ -203,7 +227,10 @@ export default function ManageProductsPage() {
           onOpenChange={onOpenChange} 
           size="2xl" 
           scrollBehavior="inside"
-          className="max-w-[95vw]"
+          classNames={{
+            base: "max-w-[95vw] sm:max-w-2xl",
+            body: "py-4 sm:py-6",
+          }}
         >
           <ModalContent>
             {(onClose) => (
@@ -313,14 +340,19 @@ export default function ManageProductsPage() {
                     )}
                   </div>
                 </ModalBody>
-                <ModalFooter>
-                  <Button variant="light" onPress={onClose}>
+                <ModalFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
+                  <Button 
+                    variant="light" 
+                    onPress={onClose}
+                    className="w-full sm:w-auto"
+                  >
                     Cancel
                   </Button>
                   <Button
                     color="primary"
                     onPress={handleSubmit}
                     isLoading={isSubmitting}
+                    className="w-full sm:w-auto"
                   >
                     {editingProduct ? "Update" : "Create"}
                   </Button>
@@ -329,7 +361,9 @@ export default function ManageProductsPage() {
             )}
           </ModalContent>
         </Modal>
-      </div>
+          </div>
+        </div>
+      </main>
     </div>
   );
 }

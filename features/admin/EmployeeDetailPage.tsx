@@ -7,6 +7,7 @@ import { apiGet } from "@/lib/api-client";
 import { User, UserListResponse, Appointment } from "@/types/api";
 import NotFoundCard from "./components/NotFoundCard";
 import EmployeeInfoCard from "./components/EmployeeInfoCard";
+import QuickActionsCard from "./components/QuickActionsCard";
 import BookingCalendar from "@/components/BookingCalendar";
 
 export default function EmployeeDetailPage() {
@@ -18,12 +19,16 @@ export default function EmployeeDetailPage() {
   const [employee, setEmployee] = useState<User | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [adminUser, setAdminUser] = useState<{ email: string; role: string } | null>(null);
+  const [isNavExpanded, setIsNavExpanded] = useState(true);
 
   useEffect(() => {
     const stored = localStorage.getItem("adminUser");
     if (!stored) {
       router.push("/admin");
     } else {
+      const user = JSON.parse(stored);
+      setAdminUser(user);
       fetchEmployeeData();
     }
   }, [router, email]);
@@ -87,15 +92,34 @@ export default function EmployeeDetailPage() {
     );
   }
 
+  if (!adminUser) {
+    return null;
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
+      {/* 左侧导航栏 */}
+      <QuickActionsCard 
+        adminUser={adminUser} 
+        isExpanded={isNavExpanded}
+        onToggle={() => setIsNavExpanded(!isNavExpanded)}
+      />
+      
+      {/* 主内容区 */}
+      <main 
+        className={`
+          flex-1 transition-all duration-300 ease-in-out
+          lg:${isNavExpanded ? 'ml-64' : 'ml-20'}
+        `}
+      >
+        <div className="py-4 md:py-8 px-3 sm:px-4">
+          <div className="max-w-7xl mx-auto">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 sm:mb-8 gap-4">
           <div>
-            <h1 className="text-4xl font-bold text-gray-900 dark:text-white">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">
               Employee Details
             </h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-2">
+            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1 sm:mt-2">
               Appointment history for {employee.username || employee.email}
             </p>
           </div>
@@ -103,6 +127,8 @@ export default function EmployeeDetailPage() {
             color="default"
             variant="flat"
             onPress={() => router.push("/admin/employees")}
+            size="sm"
+            className="w-full sm:w-auto"
           >
             ← Back to Employees
           </Button>
@@ -114,7 +140,9 @@ export default function EmployeeDetailPage() {
         <div className="mt-6">
           <BookingCalendar appointments={appointments} />
         </div>
-      </div>
+          </div>
+        </div>
+      </main>
     </div>
   );
 }
