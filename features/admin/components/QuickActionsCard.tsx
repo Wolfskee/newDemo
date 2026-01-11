@@ -67,6 +67,7 @@ export default function QuickActionsCard({ adminUser, isExpanded, onToggle }: Qu
         className={`
           hidden lg:flex flex-col
           h-screen
+          sticky top-0
           bg-gray-800 border-r border-gray-700
           transition-all duration-300 ease-in-out
           ${isExpanded ? 'w-64' : 'w-20'}

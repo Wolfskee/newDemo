@@ -104,6 +104,13 @@ export const apiRequest = async <T = any>(
     const accessToken = getAccessToken();
     if (accessToken) {
       requestHeaders["Authorization"] = `Bearer ${accessToken}`;
+    } else {
+      // Token 不存在，记录警告
+      console.warn("No access token found for authenticated request to:", endpoint);
+      // 如果 token 不存在，可能需要重新登录
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("auth:logout"));
+      }
     }
   }
 

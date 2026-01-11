@@ -16,8 +16,8 @@ import {
   AutocompleteItem,
   Spinner,
 } from "@heroui/react";
-import { apiGet } from "@/lib/api-client";
-import { User, UserListResponse } from "@/types/api";
+import { apiGet, apiPut } from "@/lib/api-client";
+import { User, UserListResponse, Availability } from "@/types/api";
 import EmployeeAvailabilityForm from "./EmployeeAvailabilityForm";
 
 type Employee = { id: string; name: string; email?: string; phone?: string; role?: string };
@@ -44,6 +44,14 @@ function toISODate(d: Date) {
   const dd = String(d.getDate()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}`;
 }
+function isToday(d: Date) {
+  const today = new Date();
+  return (
+    d.getFullYear() === today.getFullYear() &&
+    d.getMonth() === today.getMonth() &&
+    d.getDate() === today.getDate()
+  );
+}
 function fmtWeekRange(days: Date[]) {
   const start = days[0].toLocaleDateString(LOCALE, {month: "long", day: "numeric"});
   const end = days[6].toLocaleDateString(LOCALE, {month: "long", day: "numeric"});
@@ -62,6 +70,15 @@ export default function DayStaffSchedule({ readOnly = false, employeeId }: DaySt
   const [usersById, setUsersById] = useState<Map<string, User>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadingAssignments, setLoadingAssignments] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // 自动跳转到今天所在的周（组件挂载时）
+  useEffect(() => {
+    const today = new Date();
+    const todayWeekStart = startOfWeek(today);
+    setWeekStart(todayWeekStart);
+  }, []); // 只在组件挂载时执行一次
 
   // modal state
   const [open, setOpen] = useState(false);
@@ -115,19 +132,150 @@ export default function DayStaffSchedule({ readOnly = false, employeeId }: DaySt
     return new Map(employees.map((e) => [e.id, e]));
   }, [employees]);
 
+  // 从 API 获取当前周所有 ASSIGNED 状态的 availability
+  useEffect(() => {
+    const fetchAssignedAvailabilities = async () => {
+      if (loading) return; // 等待员工数据加载完成
+      
+      try {
+        setLoadingAssignments(true);
+        const assignedList: Assignment[] = [];
+        
+        // 获取当前周每一天的 ASSIGNED availability
+        for (const day of days) {
+          const dateStr = toISODate(day);
+          try {
+            // 获取该日期的所有 availability
+            const response = await apiGet<any>(
+              "availability",
+              {
+                params: { date: dateStr },
+              }
+            );
+            
+            // 处理不同的响应格式
+            let availabilities: Availability[] = [];
+            if (Array.isArray(response)) {
+              availabilities = response;
+            } else if (response?.availabilities && Array.isArray(response.availabilities)) {
+              availabilities = response.availabilities;
+            } else if (response?.data && Array.isArray(response.data)) {
+              availabilities = response.data;
+            }
+            
+            // 过滤出 ASSIGNED 状态的 availability
+            const assigned = availabilities.filter((a: Availability) => a.status === "ASSIGNED");
+            assigned.forEach((a: Availability) => {
+              assignedList.push({
+                date: dateStr,
+                employeeId: a.employeeId,
+              });
+            });
+          } catch (err) {
+            console.error(`Error fetching availability for ${dateStr}:`, err);
+          }
+        }
+        
+        setAssignments(assignedList);
+      } catch (err) {
+        console.error("Error fetching assigned availabilities:", err);
+      } finally {
+        setLoadingAssignments(false);
+      }
+    };
+
+    fetchAssignedAvailabilities();
+  }, [weekStart, days, loading]);
+
   function openAddStaff(date: string) {
     setActiveDate(date);
     setSelectedEmployeeId(null);
     setOpen(true);
   }
 
-  function addStaffToDay() {
+  async function addStaffToDay() {
     if (!activeDate || !selectedEmployeeId) return;
-    setAssignments((prev) => [...prev, {date: activeDate, employeeId: selectedEmployeeId}]);
-    setOpen(false);
+    
+    try {
+      setIsSubmitting(true);
+      
+      // 获取该日期和员工的 availability
+      const response = await apiGet<any>(
+        "availability",
+        {
+          params: {
+            date: activeDate,
+            employeeId: selectedEmployeeId,
+          },
+        }
+      );
+      
+      // 处理不同的响应格式
+      let availabilities: Availability[] = [];
+      if (Array.isArray(response)) {
+        availabilities = response;
+      } else if (response?.availabilities && Array.isArray(response.availabilities)) {
+        availabilities = response.availabilities;
+      } else if (response?.data && Array.isArray(response.data)) {
+        availabilities = response.data;
+      }
+      
+      // 找到状态为 OPEN 的 availability（通常应该只有一个）
+      const openAvailability = availabilities.find((a: Availability) => a.status === "OPEN");
+      
+      if (!openAvailability) {
+        alert("No available time slot found for this employee on this date. Please ensure the employee has created an availability with OPEN status.");
+        return;
+      }
+      
+      // 调用 PUT /availability/assign/{id} 来将状态改为 ASSIGNED
+      await apiPut(`availability/assign/${openAvailability.id}`);
+      
+      // 刷新 assignments
+      const assignedList: Assignment[] = [];
+      for (const day of days) {
+        const dateStr = toISODate(day);
+        try {
+          const dayResponse = await apiGet<any>(
+            "availability",
+            {
+              params: { date: dateStr },
+            }
+          );
+          
+          let dayAvailabilities: Availability[] = [];
+          if (Array.isArray(dayResponse)) {
+            dayAvailabilities = dayResponse;
+          } else if (dayResponse?.availabilities && Array.isArray(dayResponse.availabilities)) {
+            dayAvailabilities = dayResponse.availabilities;
+          } else if (dayResponse?.data && Array.isArray(dayResponse.data)) {
+            dayAvailabilities = dayResponse.data;
+          }
+          
+          const assigned = dayAvailabilities.filter((a: Availability) => a.status === "ASSIGNED");
+          assigned.forEach((a: Availability) => {
+            assignedList.push({
+              date: dateStr,
+              employeeId: a.employeeId,
+            });
+          });
+        } catch (err) {
+          console.error(`Error fetching availability for ${dateStr}:`, err);
+        }
+      }
+      
+      setAssignments(assignedList);
+      setOpen(false);
+    } catch (error) {
+      console.error("Error assigning staff:", error);
+      alert(error instanceof Error ? error.message : "Failed to assign staff");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   function removeAssignment(date: string, employeeId: string) {
+    // 暂时只从本地状态移除，如果需要从 API 取消分配，可以在这里调用 API
     setAssignments((prev) => prev.filter((a) => !(a.date === date && a.employeeId === employeeId)));
   }
 
@@ -204,6 +352,7 @@ export default function DayStaffSchedule({ readOnly = false, employeeId }: DaySt
               const dateStr = toISODate(d);
               const weekday = d.toLocaleDateString(LOCALE, {weekday: "short"});
               const dayNum = d.toLocaleDateString(LOCALE, {day: "numeric"});
+              const isTodayDate = isToday(d);
 
               const dayAssignments = assignments.filter((a) => a.date === dateStr);
 
@@ -212,7 +361,11 @@ export default function DayStaffSchedule({ readOnly = false, employeeId }: DaySt
                   key={dateStr}
                   radius="lg"
                   shadow="sm"
-                  className="border border-default-200 bg-content1 w-full sm:w-auto min-w-0"
+                  className={`border w-full sm:w-auto min-w-0 ${
+                    isTodayDate
+                      ? "border-primary-500 bg-primary-50 dark:bg-primary-900/20 shadow-md"
+                      : "border-default-200 bg-content1"
+                  }`}
                 >
                   <CardBody className="p-3 sm:p-3">
                     {/* Day header */}
@@ -350,7 +503,8 @@ export default function DayStaffSchedule({ readOnly = false, employeeId }: DaySt
                 <Button 
                   color="primary" 
                   onPress={addStaffToDay} 
-                  isDisabled={!selectedEmployeeId}
+                  isDisabled={!selectedEmployeeId || isSubmitting}
+                  isLoading={isSubmitting}
                   className="w-full sm:w-auto"
                 >
                   Add

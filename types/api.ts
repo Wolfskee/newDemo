@@ -146,3 +146,25 @@ export interface OrderListResponse {
   hasNextPage: boolean;
   hasPreviousPage: boolean;
 }
+
+// 可用性接口
+export interface Availability {
+  id: string;
+  date: string; // ISO 格式
+  startTime: string; // ISO 格式
+  endTime: string; // ISO 格式
+  status: string; // OPEN, CLOSED 等
+  employeeId: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+// 可用性列表响应接口
+export interface AvailabilityListResponse {
+  availabilities: Availability[];
+  total?: number;
+  totalPages?: number;
+  currentPage?: number;
+  hasNextPage?: boolean;
+  hasPreviousPage?: boolean;
+}
