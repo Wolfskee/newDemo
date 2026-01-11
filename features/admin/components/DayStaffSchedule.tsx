@@ -20,7 +20,7 @@ import { apiGet } from "@/lib/api-client";
 import { User, UserListResponse } from "@/types/api";
 import EmployeeAvailabilityForm from "./EmployeeAvailabilityForm";
 
-type Employee = { id: string; name: string; role?: string };
+type Employee = { id: string; name: string; email?: string; phone?: string; role?: string };
 type Assignment = { employeeId: string; date: string }; // date: YYYY-MM-DD
 
 const LOCALE = "en-US";
@@ -59,6 +59,7 @@ export default function DayStaffSchedule({ readOnly = false, employeeId }: DaySt
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date()));
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [usersById, setUsersById] = useState<Map<string, User>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -82,9 +83,18 @@ export default function DayStaffSchedule({ readOnly = false, employeeId }: DaySt
         const formattedEmployees: Employee[] = employeeList.map((user: User) => ({
           id: user.id,
           name: user.username || user.email,
+          email: user.email,
+          phone: user.phone,
           role: user.role === "EMPLOYEE" || user.role === "employee" ? "Employee" : undefined,
         }));
         setEmployees(formattedEmployees);
+        
+        // 存储完整的用户信息映射（包括所有用户，不仅仅是员工）
+        const userMap = new Map<string, User>();
+        (data.users || []).forEach((user: User) => {
+          userMap.set(user.id, user);
+        });
+        setUsersById(userMap);
       } catch (err) {
         console.error("Error fetching employees:", err);
         setError(err instanceof Error ? err.message : "Failed to fetch employees");
@@ -218,6 +228,7 @@ export default function DayStaffSchedule({ readOnly = false, employeeId }: DaySt
                     <div className="flex flex-col gap-2">
                       {dayAssignments.map((a, idx) => {
                         const emp = employeesById.get(a.employeeId);
+                        const fullUser = usersById.get(a.employeeId);
                         return (
                           <Card
                             key={`${a.employeeId}-${idx}`}
@@ -225,30 +236,49 @@ export default function DayStaffSchedule({ readOnly = false, employeeId }: DaySt
                             shadow="none"
                             className="border border-default-200 bg-default-50"
                           >
-                            <CardBody className="p-2 sm:p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                              <div className="min-w-0 flex-1">
-                                <div className="text-xs sm:text-sm font-semibold truncate">
-                                  {emp?.name ?? a.employeeId}
+                            <CardBody className="p-2 sm:p-3">
+                              <div className="flex flex-col items-center text-center gap-2">
+                                {/* 员工名称 */}
+                                <div className="text-xs sm:text-sm font-semibold truncate w-full">
+                                  {emp?.name ?? fullUser?.username ?? fullUser?.email ?? a.employeeId}
                                 </div>
-                                {emp?.role ? (
-                                  <div className="mt-1">
+                                
+                                {/* 角色标签 */}
+                                {emp?.role && (
+                                  <div className="flex justify-center">
                                     <Chip size="sm" variant="flat" color="primary" className="text-xs">
                                       {emp.role}
                                     </Chip>
                                   </div>
-                                ) : null}
-                              </div>
+                                )}
+                                
+                                {/* 邮箱信息 */}
+                                {(fullUser?.email || emp?.email) && (
+                                  <div className="text-xs text-foreground-500 truncate w-full">
+                                    📧 {(fullUser?.email || emp?.email)}
+                                  </div>
+                                )}
+                                
+                                {/* 电话信息 */}
+                                {(fullUser?.phone || emp?.phone) && (
+                                  <div className="text-xs text-foreground-500 truncate w-full">
+                                    📞 {(fullUser?.phone || emp?.phone)}
+                                  </div>
+                                )}
 
-                              {!readOnly && (
-                                <Button
-                                  size="sm"
-                                  variant="light"
-                                  onPress={() => removeAssignment(dateStr, a.employeeId)}
-                                  className="w-full sm:w-auto text-xs sm:text-sm"
-                                >
-                                  Remove
-                                </Button>
-                              )}
+                                {/* 移除按钮 */}
+                                {!readOnly && (
+                                  <Button
+                                    size="sm"
+                                    variant="light"
+                                    color="danger"
+                                    onPress={() => removeAssignment(dateStr, a.employeeId)}
+                                    className="w-full text-xs sm:text-sm mt-1"
+                                  >
+                                    Remove
+                                  </Button>
+                                )}
+                              </div>
                             </CardBody>
                           </Card>
                         );

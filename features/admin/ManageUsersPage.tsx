@@ -121,7 +121,7 @@ export default function ManageUsersPage() {
           username: formData.username,
           email: formData.email,
           phone: formData.phone,
-          role: formData.role,
+          role: "CUSTOMER", // 固定为 CUSTOMER
           ...(formData.password && { password: formData.password }),
         };
 
@@ -138,7 +138,7 @@ export default function ManageUsersPage() {
             username: formData.username.trim(),
             email: formData.email.trim(),
             password: formData.password,
-            role: formData.role,
+            role: "CUSTOMER", // 固定为 CUSTOMER
             phone: formData.phone.trim(),
           },
           { skipAuth: true }
@@ -149,7 +149,7 @@ export default function ManageUsersPage() {
           const emailData = getUserWelcomeEmail({
             email: formData.email.trim(),
             username: formData.username.trim(),
-            role: formData.role,
+            role: "CUSTOMER", // 固定为 CUSTOMER
           });
 
           await apiPost(
@@ -350,26 +350,14 @@ export default function ManageUsersPage() {
                       isRequired
                       fullWidth
                     />
-                    <Select
+                    <Input
                       label="Role"
-                      selectedKeys={[formData.role]}
-                      onSelectionChange={(keys) => {
-                        const selected = Array.from(keys)[0] as string;
-                        setFormData({ ...formData, role: selected });
-                      }}
+                      value="CUSTOMER"
+                      isDisabled
                       isRequired
                       fullWidth
-                    >
-                      <SelectItem key="CUSTOMER">
-                        CUSTOMER
-                      </SelectItem>
-                      <SelectItem key="ADMIN">
-                        ADMIN
-                      </SelectItem>
-                      <SelectItem key="EMPLOYEE">
-                        EMPLOYEE
-                      </SelectItem>
-                    </Select>
+                      description="Role is fixed to CUSTOMER"
+                    />
                   </div>
                 </ModalBody>
                 <ModalFooter className="flex-col sm:flex-row gap-2 sm:gap-0">

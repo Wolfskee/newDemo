@@ -16,7 +16,7 @@ import {
   Select,
   SelectItem,
 } from "@heroui/react";
-import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api-client";
+import { apiGet, apiPost, apiPut, apiDelete, apiUploadFile } from "@/lib/api-client";
 import { Item, ItemListResponse } from "@/types/api";
 import ServicesTableCard from "./components/ServicesTableCard";
 import QuickActionsCard from "./components/QuickActionsCard";
@@ -37,6 +37,7 @@ export default function ManageServicesPage() {
     imageUrl: "",
   });
   const [imagePreview, setImagePreview] = useState<string>("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [adminUser, setAdminUser] = useState<{ email: string; role: string } | null>(null);
   const [isNavExpanded, setIsNavExpanded] = useState(true);
@@ -80,6 +81,7 @@ export default function ManageServicesPage() {
         imageUrl: service.imageUrl,
       });
       setImagePreview(service.imageUrl);
+      setImageFile(null);
     } else {
       setEditingService(null);
       setFormData({
@@ -92,18 +94,39 @@ export default function ManageServicesPage() {
         imageUrl: "",
       });
       setImagePreview("");
+      setImageFile(null);
     }
     onOpen();
   };
 
+  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      // 创建预览 URL
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+      // 清除 URL 输入
+      setFormData({ ...formData, imageUrl: "" });
+    }
+  };
+
   const handleSubmit = async () => {
-    if (!formData.name || !formData.description || !formData.price || !formData.imageUrl) {
+    if (!formData.name || !formData.description || !formData.price) {
       alert("Please fill in all required fields");
       return;
     }
 
     if (!formData.duration || parseFloat(formData.duration) <= 0) {
       alert("Duration must be greater than 0 for services");
+      return;
+    }
+
+    if (!imageFile && !formData.imageUrl) {
+      alert("Please provide either an image file or image URL");
       return;
     }
 
@@ -116,13 +139,32 @@ export default function ManageServicesPage() {
         duration: parseInt(formData.duration),
         category: formData.category || "Service",
         status: formData.status,
-        imageUrl: formData.imageUrl,
+        imageUrl: formData.imageUrl || "", // 如果有文件，imageUrl 将稍后更新
       };
 
+      let serviceId: string;
+
       if (editingService) {
+        // 编辑现有服务
         await apiPut(`item/${editingService.id}`, body);
+        serviceId = editingService.id;
+
+        // 如果有新图片文件，上传图片
+        if (imageFile) {
+          await apiUploadFile(`item/image/${serviceId}`, imageFile, { fieldName: "image" });
+        }
       } else {
-        await apiPost("item", body);
+        // 创建新服务
+        const newService = await apiPost<Item>("item", body);
+        serviceId = newService.id;
+
+        // 如果有图片文件，上传图片
+        if (imageFile) {
+          await apiUploadFile(`item/image/${serviceId}`, imageFile, { fieldName: "image" });
+        } else if (formData.imageUrl) {
+          // 如果使用 URL，可能需要更新服务信息以包含 imageUrl
+          // 这取决于后端是否会在创建时接受 imageUrl
+        }
       }
 
       await fetchServices();
@@ -137,6 +179,7 @@ export default function ManageServicesPage() {
         imageUrl: "",
       });
       setImagePreview("");
+      setImageFile(null);
       setEditingService(null);
     } catch (error) {
       console.error("Error saving service:", error);
@@ -157,6 +200,21 @@ export default function ManageServicesPage() {
     } catch (error) {
       console.error("Error deleting service:", error);
       alert(error instanceof Error ? error.message : "Failed to delete service");
+    }
+  };
+
+  const handleDeleteImage = async (serviceId: string) => {
+    if (!confirm("Are you sure you want to delete this service image?")) {
+      return;
+    }
+
+    try {
+      await apiDelete(`item/image/${serviceId}`);
+      await fetchServices();
+      alert("Service image deleted successfully");
+    } catch (error) {
+      console.error("Error deleting service image:", error);
+      alert(error instanceof Error ? error.message : "Failed to delete service image");
     }
   };
 
@@ -321,20 +379,67 @@ export default function ManageServicesPage() {
                       </SelectItem>
                     </Select>
 
-                    <Input
-                      label="Image URL"
-                      placeholder="https://example.com/images/service.jpg"
-                      value={formData.imageUrl}
-                      onChange={(e) => {
-                        setFormData({ ...formData, imageUrl: e.target.value });
-                        setImagePreview(e.target.value);
-                      }}
-                      isRequired
-                      fullWidth
-                    />
+                    <div className="space-y-3">
+                      <label className="block text-sm font-medium">
+                        Service Image <span className="text-danger">*</span>
+                      </label>
+                      
+                      {/* 文件上传 */}
+                      <div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageFileChange}
+                          className="hidden"
+                          id="service-image-input"
+                        />
+                        <label htmlFor="service-image-input">
+                          <Button
+                            as="span"
+                            size="sm"
+                            variant="flat"
+                            color="secondary"
+                            className="cursor-pointer"
+                            isDisabled={isSubmitting}
+                          >
+                            {imageFile ? "Change Image File" : "Upload Image File"}
+                          </Button>
+                        </label>
+                        {imageFile && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            Selected: {imageFile.name}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="relative">
+                        <div className="absolute inset-0 flex items-center">
+                          <div className="w-full border-t border-gray-300 dark:border-gray-600" />
+                        </div>
+                        <div className="relative flex justify-center text-xs uppercase">
+                          <span className="bg-gray-50 dark:bg-gray-900 px-2 text-gray-500">
+                            Or
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* URL 输入 */}
+                      <Input
+                        label="Image URL"
+                        placeholder="https://example.com/images/service.jpg"
+                        value={formData.imageUrl}
+                        onChange={(e) => {
+                          setFormData({ ...formData, imageUrl: e.target.value });
+                          setImagePreview(e.target.value);
+                          setImageFile(null); // 清除文件选择
+                        }}
+                        isDisabled={!!imageFile}
+                        fullWidth
+                      />
+                    </div>
 
                     {imagePreview && (
-                      <div className="mt-4">
+                      <div className="mt-4 space-y-2">
                         <Image
                           src={imagePreview}
                           alt="Preview"
@@ -342,6 +447,17 @@ export default function ManageServicesPage() {
                           height={200}
                           className="object-cover rounded"
                         />
+                        {editingService && editingService.imageUrl && !imageFile && (
+                          <Button
+                            size="sm"
+                            variant="flat"
+                            color="danger"
+                            onPress={() => handleDeleteImage(editingService.id)}
+                            isDisabled={isSubmitting}
+                          >
+                            Delete Current Image
+                          </Button>
+                        )}
                       </div>
                     )}
                   </div>
