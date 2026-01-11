@@ -243,13 +243,18 @@ export default function DayStaffSchedule({ readOnly = false, employeeId }: DaySt
         availabilities = response.data;
       }
       
-      // 找到状态为 OPEN 的 availability（通常应该只有一个）
-      const openAvailability = availabilities.find((a: Availability) => a.status === "OPEN");
+      // 验证返回的 availability 是否属于选择的员工
+      const validAvailabilities = availabilities.filter(
+        (a: Availability) => a.employeeId === selectedEmployeeId && a.status === "OPEN"
+      );
       
-      if (!openAvailability) {
+      if (validAvailabilities.length === 0) {
         alert("No available time slot found for this employee on this date. Please ensure the employee has created an availability with OPEN status.");
         return;
       }
+      
+      // 使用 API 返回的顺序，选择第一个有效的 OPEN availability
+      const openAvailability = validAvailabilities[0];
       
       // 调用 PUT /availability/assign/{id} 来将状态改为 ASSIGNED
       await apiPut(`availability/assign/${openAvailability.id}`);

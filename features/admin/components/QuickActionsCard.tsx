@@ -7,6 +7,7 @@ import { useRouter, usePathname } from "next/navigation";
 interface AdminUser {
   email: string;
   role: string; // 改为 string 以支持 "ADMIN" 或 "admin"
+  username?: string; // 可选的用户名
 }
 
 interface QuickActionsCardProps {
@@ -110,6 +111,9 @@ export default function QuickActionsCard({ adminUser, isExpanded, onToggle }: Qu
         {/* 底部用户信息 */}
         {isExpanded && (
           <div className="p-4 border-t border-gray-700">
+            {adminUser.username && (
+              <p className="text-xs text-gray-300 truncate font-medium">{adminUser.username}</p>
+            )}
             <p className="text-xs text-gray-400 truncate">{adminUser.email}</p>
             <p className="text-xs text-gray-500 mt-1">{isAdmin ? "Admin" : "Employee"}</p>
           </div>

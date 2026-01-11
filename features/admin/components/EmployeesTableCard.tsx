@@ -35,6 +35,7 @@ export default function EmployeesTableCard({ employees, onEdit, onDelete }: Empl
         <div className="hidden md:block">
           <Table aria-label="Employees table">
             <TableHeader>
+              <TableColumn>USERNAME</TableColumn>
               <TableColumn>EMAIL</TableColumn>
               <TableColumn>ROLE</TableColumn>
               <TableColumn>CREATED AT</TableColumn>
@@ -51,6 +52,18 @@ export default function EmployeesTableCard({ employees, onEdit, onDelete }: Empl
                         )
                       }
                       className="font-semibold text-primary hover:underline cursor-pointer"
+                    >
+                      {employee.username || employee.email}
+                    </button>
+                  </TableCell>
+                  <TableCell>
+                    <button
+                      onClick={() =>
+                        router.push(
+                          `/admin/employees/${encodeURIComponent(employee.email)}`
+                        )
+                      }
+                      className="text-foreground hover:underline cursor-pointer"
                     >
                       {employee.email}
                     </button>
@@ -104,10 +117,23 @@ export default function EmployeesTableCard({ employees, onEdit, onDelete }: Empl
                       }
                       className="text-lg font-semibold text-primary hover:underline cursor-pointer"
                     >
-                      {employee.email}
+                      {employee.username || employee.email}
                     </button>
                   </div>
                   <div className="space-y-2 text-sm">
+                    <div>
+                      <span className="text-gray-500">Email: </span>
+                      <button
+                        onClick={() =>
+                          router.push(
+                            `/admin/employees/${encodeURIComponent(employee.email)}`
+                          )
+                        }
+                        className="text-foreground hover:underline cursor-pointer"
+                      >
+                        {employee.email}
+                      </button>
+                    </div>
                     <div>
                       <span className="text-gray-500">Role: </span>
                       <Chip size="sm" variant="flat" color="warning">

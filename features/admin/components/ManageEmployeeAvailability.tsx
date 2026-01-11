@@ -40,7 +40,6 @@ export default function ManageEmployeeAvailability({ onSuccess }: ManageEmployee
   const [loading, setLoading] = useState(true);
   const [loadingAvailabilities, setLoadingAvailabilities] = useState(false);
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
-  const [editingAvailability, setEditingAvailability] = useState<Availability | null>(null);
   
   // 查询日期（用于获取 availability）
   const [queryDate, setQueryDate] = useState<CalendarDate | null>(() => {
@@ -48,7 +47,7 @@ export default function ManageEmployeeAvailability({ onSuccess }: ManageEmployee
     return parseDate(today.toISOString().split("T")[0]);
   });
   
-  // 表单状态（用于添加/编辑）
+  // 表单状态（用于添加）
   const [selectedDate, setSelectedDate] = useState<CalendarDate | null>(null);
   const [startTime, setStartTime] = useState<string>("09:00");
   const [endTime, setEndTime] = useState<string>("17:00");
@@ -65,9 +64,7 @@ export default function ManageEmployeeAvailability({ onSuccess }: ManageEmployee
           (user: User) => user.role === "EMPLOYEE" || user.role === "employee"
         );
         setEmployees(employeeList);
-        if (employeeList.length > 0) {
-          setSelectedEmployee(employeeList[0]);
-        }
+        // 初始值保持为 null，表示 "All Employees"
       } catch (error) {
         console.error("Error fetching employees:", error);
       } finally {
@@ -148,42 +145,12 @@ export default function ManageEmployeeAvailability({ onSuccess }: ManageEmployee
     }
   };
 
-  const handleOpenModal = (availability?: Availability) => {
-    if (availability) {
-      setEditingAvailability(availability);
-      // 解析日期和时间 - 使用 UTC 方法来避免时区转换问题
-      const date = new Date(availability.date);
-      // 使用 UTC 方法获取日期部分
-      const year = date.getUTCFullYear();
-      const month = String(date.getUTCMonth() + 1).padStart(2, "0");
-      const day = String(date.getUTCDate()).padStart(2, "0");
-      const dateStr = `${year}-${month}-${day}`;
-      try {
-        setSelectedDate(parseDate(dateStr));
-      } catch (e) {
-        console.error("Error parsing date:", e);
-        setSelectedDate(null);
-      }
-      
-      // 使用 UTC 方法获取时间部分
-      const startTimeDate = new Date(availability.startTime);
-      const startHours = String(startTimeDate.getUTCHours()).padStart(2, "0");
-      const startMinutes = String(startTimeDate.getUTCMinutes()).padStart(2, "0");
-      setStartTime(`${startHours}:${startMinutes}`);
-      
-      const endTimeDate = new Date(availability.endTime);
-      const endHours = String(endTimeDate.getUTCHours()).padStart(2, "0");
-      const endMinutes = String(endTimeDate.getUTCMinutes()).padStart(2, "0");
-      setEndTime(`${endHours}:${endMinutes}`);
-      
-      setStatus(availability.status);
-    } else {
-      setEditingAvailability(null);
-      setSelectedDate(null);
-      setStartTime("09:00");
-      setEndTime("17:00");
-      setStatus("OPEN");
-    }
+  const handleOpenModal = () => {
+    // 重置表单为默认值
+    setSelectedDate(null);
+    setStartTime("09:00");
+    setEndTime("17:00");
+    setStatus("OPEN");
     onOpen();
   };
 
@@ -222,14 +189,10 @@ export default function ManageEmployeeAvailability({ onSuccess }: ManageEmployee
         employeeId: selectedEmployee.id,
       };
 
-      if (editingAvailability) {
-        // 更新现有的 availability - 假设有 PUT /availability/{id} API
-        await apiPut(`availability/${editingAvailability.id}`, availabilityData);
-      } else {
-        // 创建新的 availability
-        await apiPost("availability", availabilityData);
-      }
+      // 创建新的 availability
+      await apiPost("availability", availabilityData);
 
+      // 刷新数据
       await fetchEmployeeAvailability(selectedEmployee.id);
       onOpenChange();
       if (onSuccess) {
@@ -250,9 +213,8 @@ export default function ManageEmployeeAvailability({ onSuccess }: ManageEmployee
 
     try {
       await apiDelete(`availability/${id}`);
-      if (selectedEmployee) {
-        await fetchEmployeeAvailability(selectedEmployee.id);
-      }
+      // 删除后刷新数据（无论是否选择了员工）
+      await fetchEmployeeAvailability(selectedEmployee?.id);
       if (onSuccess) {
         onSuccess();
       }
@@ -417,24 +379,14 @@ export default function ManageEmployeeAvailability({ onSuccess }: ManageEmployee
                                   </Chip>
                                 </TableCell>
                                 <TableCell>
-                                  <div className="flex gap-2">
-                                    <Button
-                                      size="sm"
-                                      variant="flat"
-                                      color="primary"
-                                      onPress={() => handleOpenModal(availability)}
-                                    >
-                                      Edit
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="flat"
-                                      color="danger"
-                                      onPress={() => handleDelete(availability.id)}
-                                    >
-                                      Delete
-                                    </Button>
-                                  </div>
+                                  <Button
+                                    size="sm"
+                                    variant="flat"
+                                    color="danger"
+                                    onPress={() => handleDelete(availability.id)}
+                                  >
+                                    Delete
+                                  </Button>
                                 </TableCell>
                               </TableRow>
                             );
@@ -450,13 +402,13 @@ export default function ManageEmployeeAvailability({ onSuccess }: ManageEmployee
         </CardBody>
       </Card>
 
-      {/* 添加/编辑 Modal */}
+      {/* 添加 Modal */}
       <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="lg">
         <ModalContent>
           {(onClose) => (
             <>
               <ModalHeader>
-                {editingAvailability ? "Edit Availability" : "Add Availability"}
+                Add Availability
               </ModalHeader>
               <ModalBody>
                 <div className="space-y-4">
@@ -512,7 +464,7 @@ export default function ManageEmployeeAvailability({ onSuccess }: ManageEmployee
                   onPress={handleSubmit}
                   isLoading={isSubmitting}
                 >
-                  {editingAvailability ? "Update" : "Create"}
+                  Create
                 </Button>
               </ModalFooter>
             </>
