@@ -151,9 +151,13 @@ export default function ManageEmployeeAvailability({ onSuccess }: ManageEmployee
   const handleOpenModal = (availability?: Availability) => {
     if (availability) {
       setEditingAvailability(availability);
-      // 解析日期和时间
+      // 解析日期和时间 - 使用 UTC 方法来避免时区转换问题
       const date = new Date(availability.date);
-      const dateStr = date.toISOString().split("T")[0];
+      // 使用 UTC 方法获取日期部分
+      const year = date.getUTCFullYear();
+      const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+      const day = String(date.getUTCDate()).padStart(2, "0");
+      const dateStr = `${year}-${month}-${day}`;
       try {
         setSelectedDate(parseDate(dateStr));
       } catch (e) {
@@ -161,6 +165,7 @@ export default function ManageEmployeeAvailability({ onSuccess }: ManageEmployee
         setSelectedDate(null);
       }
       
+      // 使用 UTC 方法获取时间部分
       const startTimeDate = new Date(availability.startTime);
       const startHours = String(startTimeDate.getUTCHours()).padStart(2, "0");
       const startMinutes = String(startTimeDate.getUTCMinutes()).padStart(2, "0");
@@ -259,20 +264,22 @@ export default function ManageEmployeeAvailability({ onSuccess }: ManageEmployee
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
+    // 使用 UTC 方法来避免时区转换问题
     return date.toLocaleDateString("en-US", {
       weekday: "short",
       year: "numeric",
       month: "short",
       day: "numeric",
+      timeZone: "UTC", // 明确使用 UTC 时区
     });
   };
 
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    // 使用 UTC 方法来避免时区转换问题，使用24小时制
+    const hours = String(date.getUTCHours()).padStart(2, "0");
+    const minutes = String(date.getUTCMinutes()).padStart(2, "0");
+    return `${hours}:${minutes}`;
   };
 
   if (loading) {

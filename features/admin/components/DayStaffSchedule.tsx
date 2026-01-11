@@ -21,7 +21,13 @@ import { User, UserListResponse, Availability } from "@/types/api";
 import EmployeeAvailabilityForm from "./EmployeeAvailabilityForm";
 
 type Employee = { id: string; name: string; email?: string; phone?: string; role?: string };
-type Assignment = { employeeId: string; date: string }; // date: YYYY-MM-DD
+type Assignment = { 
+  employeeId: string; 
+  date: string; // date: YYYY-MM-DD
+  availabilityId?: string;
+  startTime?: string;
+  endTime?: string;
+};
 
 const LOCALE = "en-US";
 
@@ -56,6 +62,20 @@ function fmtWeekRange(days: Date[]) {
   const start = days[0].toLocaleDateString(LOCALE, {month: "long", day: "numeric"});
   const end = days[6].toLocaleDateString(LOCALE, {month: "long", day: "numeric"});
   return `${start} — ${end}`;
+}
+function formatTimeRange(startTime: string, endTime: string): string {
+  try {
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+    // 使用 24 小时制，更紧凑
+    const startHours = String(start.getUTCHours()).padStart(2, "0");
+    const startMinutes = String(start.getUTCMinutes()).padStart(2, "0");
+    const endHours = String(end.getUTCHours()).padStart(2, "0");
+    const endMinutes = String(end.getUTCMinutes()).padStart(2, "0");
+    return `${startHours}:${startMinutes}-${endHours}:${endMinutes}`;
+  } catch (e) {
+    return "";
+  }
 }
 
 interface DayStaffScheduleProps {
@@ -169,6 +189,9 @@ export default function DayStaffSchedule({ readOnly = false, employeeId }: DaySt
               assignedList.push({
                 date: dateStr,
                 employeeId: a.employeeId,
+                availabilityId: a.id,
+                startTime: a.startTime,
+                endTime: a.endTime,
               });
             });
           } catch (err) {
@@ -257,6 +280,9 @@ export default function DayStaffSchedule({ readOnly = false, employeeId }: DaySt
             assignedList.push({
               date: dateStr,
               employeeId: a.employeeId,
+              availabilityId: a.id,
+              startTime: a.startTime,
+              endTime: a.endTime,
             });
           });
         } catch (err) {
@@ -405,17 +431,11 @@ export default function DayStaffSchedule({ readOnly = false, employeeId }: DaySt
                                   </div>
                                 )}
                                 
-                                {/* 邮箱信息 */}
-                                {(fullUser?.email || emp?.email) && (
-                                  <div className="text-xs text-foreground-500 truncate w-full">
-                                    📧 {(fullUser?.email || emp?.email)}
-                                  </div>
-                                )}
-                                
-                                {/* 电话信息 */}
-                                {(fullUser?.phone || emp?.phone) && (
-                                  <div className="text-xs text-foreground-500 truncate w-full">
-                                    📞 {(fullUser?.phone || emp?.phone)}
+                                {/* Availability 时间段 */}
+                                {a.startTime && a.endTime && (
+                                  <div className="text-xs text-foreground-600 font-medium w-full break-words">
+                                    <span className="inline-block">🕐</span>{" "}
+                                    <span className="whitespace-nowrap">{formatTimeRange(a.startTime, a.endTime)}</span>
                                   </div>
                                 )}
 
