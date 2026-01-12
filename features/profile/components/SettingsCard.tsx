@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Card, CardBody, CardHeader, Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Input, useDisclosure } from "@heroui/react";
 import { useAuth } from "@/contexts/AuthContext";
-import { apiPut, apiPost, apiUploadFile, apiDelete } from "@/lib/api-client";
+import { apiPut, apiPost, apiUploadFile, apiDelete, apiGet } from "@/lib/api-client";
 
 export default function SettingsCard() {
     const { user, setUser } = useAuth();
@@ -91,6 +91,17 @@ export default function SettingsCard() {
                 try {
                     // 使用新的 API 上传头像
                     await apiUploadFile(`user/profile-image/${user.id}`, profileImage, { fieldName: "profileImage" });
+                    
+                    // 上传成功后，重新获取用户信息以获取最新的头像 URL
+                    try {
+                        const updatedUserData = await apiGet(`user/${user.id}`);
+                        if (setUser && updatedUserData) {
+                            setUser(updatedUserData);
+                        }
+                    } catch (fetchError) {
+                        console.error("Failed to fetch updated user data:", fetchError);
+                        // 即使获取用户信息失败，也继续执行（头像已经上传成功）
+                    }
                 } catch (error) {
                     setErrorMessage(
                         error instanceof Error
@@ -175,11 +186,21 @@ export default function SettingsCard() {
 
         try {
             await apiDelete(`user/profile-image/${user.id}`);
+            
+            // 删除成功后，重新获取用户信息以更新头像显示
+            try {
+                const updatedUserData = await apiGet(`user/${user.id}`);
+                if (setUser && updatedUserData) {
+                    setUser(updatedUserData);
+                }
+            } catch (fetchError) {
+                console.error("Failed to fetch updated user data:", fetchError);
+                // 即使获取用户信息失败，也继续执行（头像已经删除成功）
+            }
+            
             setSuccessMessage("Profile image deleted successfully!");
             setProfileImage(null);
             setProfileImagePreview(null);
-            // 重新获取用户信息
-            // 注意：这里可能需要刷新用户数据，具体取决于后端返回的数据
             setTimeout(() => {
                 onOpenChange();
             }, 1500);

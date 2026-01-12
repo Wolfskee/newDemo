@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { User } from "@/types/api";
-import { setTokens, clearTokens, getAccessToken } from "@/lib/api-client";
+import { setTokens, clearTokens, getAccessToken, getRefreshToken, refreshAccessToken } from "@/lib/api-client";
 
 interface AuthContextType {
   user: User | null;
@@ -20,11 +20,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // 检查是否有 token（用于判断是否已登录）
+  // 初始化时检查 token 并尝试刷新
   useEffect(() => {
-    const token = getAccessToken();
-    setIsAuthenticated(!!token);
-    setLoading(false);
+    const initializeAuth = async () => {
+      try {
+        const refreshToken = getRefreshToken();
+
+        // 如果有 refreshToken，尝试刷新 token
+        if (refreshToken) {
+          const newTokens = await refreshAccessToken();
+          if (newTokens) {
+            // 刷新成功
+            setIsAuthenticated(true);
+            // 注意：refresh API 可能不返回用户信息，用户信息需要从其他地方获取
+          } else {
+            // 刷新失败，清除 tokens
+            setIsAuthenticated(false);
+            setUser(null);
+          }
+        } else {
+          // 没有 refreshToken，检查是否有 accessToken
+          const accessToken = getAccessToken();
+          if (accessToken) {
+            setIsAuthenticated(true);
+          } else {
+            setIsAuthenticated(false);
+            setUser(null);
+          }
+        }
+      } catch (error) {
+        console.error("Error initializing auth:", error);
+        setIsAuthenticated(false);
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeAuth();
   }, []);
 
   // 监听登出事件

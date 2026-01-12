@@ -73,6 +73,7 @@ export interface User {
   email: string;
   role: "CUSTOMER" | "ADMIN" | string;
   phone: string;
+  profileImage?: string; // 可选的用户头像 URL
   createdAt: string;
   updatedAt: string;
 }

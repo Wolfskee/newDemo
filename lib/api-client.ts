@@ -34,7 +34,7 @@ export const clearTokens = (): void => {
 let isRefreshing = false;
 let refreshPromise: Promise<{ accessToken: string; refreshToken: string } | null> | null = null;
 
-const refreshAccessToken = async (): Promise<{ accessToken: string; refreshToken: string } | null> => {
+export const refreshAccessToken = async (): Promise<{ accessToken: string; refreshToken: string } | null> => {
   if (isRefreshing && refreshPromise) {
     return refreshPromise;
   }

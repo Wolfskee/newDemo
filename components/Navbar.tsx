@@ -229,6 +229,7 @@ export default function Navbar() {
                     as="button"
                     className="transition-transform cursor-pointer"
                     name={user.username || user.email}
+                    src={user.profileImage}
                     size="sm"
                     fallback="👤"
                   />

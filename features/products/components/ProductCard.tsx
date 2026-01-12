@@ -10,13 +10,11 @@ export default function ProductCard({ product, handleAddToCart }: ProductCardPro
 
 	return (
 		<Card key={product.id} className="hover:shadow-xl transition-shadow">
-			<CardHeader className="p-0 flex justify-center items-center bg-default-100">
+			<CardHeader className="p-0 flex justify-center items-center bg-default-100 min-h-[300px]">
 				<Image
 					src={product.imageUrl}
 					alt={product.name}
-					width="100%"
-					height={300}
-					className="object-cover"
+					className="max-w-full max-h-[300px] object-contain"
 				/>
 			</CardHeader>
 			<CardBody className="p-6">
