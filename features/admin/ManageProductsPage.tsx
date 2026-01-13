@@ -16,7 +16,7 @@ import {
   Select,
   SelectItem,
 } from "@heroui/react";
-import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api-client";
+import { apiGet, apiPost, apiPut, apiDelete, apiUploadFile } from "@/lib/api-client";
 import { Item, ItemListResponse } from "@/types/api";
 import ProductsTableCard from "./components/ProductsTableCard";
 import QuickActionsCard from "./components/QuickActionsCard";
@@ -37,6 +37,7 @@ export default function ManageProductsPage() {
     imageUrl: "",
   });
   const [imagePreview, setImagePreview] = useState<string>("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [adminUser, setAdminUser] = useState<{ email: string; role: string } | null>(null);
   const [isNavExpanded, setIsNavExpanded] = useState(true);
@@ -80,6 +81,7 @@ export default function ManageProductsPage() {
         imageUrl: product.imageUrl,
       });
       setImagePreview(product.imageUrl);
+      setImageFile(null);
     } else {
       setEditingProduct(null);
       setFormData({
@@ -92,13 +94,34 @@ export default function ManageProductsPage() {
         imageUrl: "",
       });
       setImagePreview("");
+      setImageFile(null);
     }
     onOpen();
   };
 
+  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      // 创建预览 URL
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+      // 清除 URL 输入
+      setFormData({ ...formData, imageUrl: "" });
+    }
+  };
+
   const handleSubmit = async () => {
-    if (!formData.name || !formData.description || !formData.price || !formData.imageUrl) {
+    if (!formData.name || !formData.description || !formData.price) {
       alert("Please fill in all required fields");
+      return;
+    }
+
+    if (!imageFile && !formData.imageUrl) {
+      alert("Please provide either an image file or image URL");
       return;
     }
 
@@ -111,13 +134,32 @@ export default function ManageProductsPage() {
         duration: parseInt(formData.duration),
         category: formData.category || "Product",
         status: formData.status,
-        imageUrl: formData.imageUrl,
+        imageUrl: formData.imageUrl || "", // 如果有文件，imageUrl 将稍后更新
       };
 
+      let productId: string;
+
       if (editingProduct) {
+        // 编辑现有商品
         await apiPut(`item/${editingProduct.id}`, body);
+        productId = editingProduct.id;
+
+        // 如果有新图片文件，上传图片
+        if (imageFile) {
+          await apiUploadFile(`item/image/${productId}`, imageFile, { fieldName: "image" });
+        }
       } else {
-        await apiPost("item", body);
+        // 创建新商品
+        const newProduct = await apiPost<Item>("item", body);
+        productId = newProduct.id;
+
+        // 如果有图片文件，上传图片
+        if (imageFile) {
+          await apiUploadFile(`item/image/${productId}`, imageFile, { fieldName: "image" });
+        } else if (formData.imageUrl) {
+          // 如果使用 URL，可能需要更新商品信息以包含 imageUrl
+          // 这取决于后端是否会在创建时接受 imageUrl
+        }
       }
 
       await fetchProducts();
@@ -132,6 +174,7 @@ export default function ManageProductsPage() {
         imageUrl: "",
       });
       setImagePreview("");
+      setImageFile(null);
       setEditingProduct(null);
     } catch (error) {
       console.error("Error saving product:", error);
@@ -152,6 +195,21 @@ export default function ManageProductsPage() {
     } catch (error) {
       console.error("Error deleting product:", error);
       alert(error instanceof Error ? error.message : "Failed to delete product");
+    }
+  };
+
+  const handleDeleteImage = async (productId: string) => {
+    if (!confirm("Are you sure you want to delete this product image?")) {
+      return;
+    }
+
+    try {
+      await apiDelete(`item/image/${productId}`);
+      await fetchProducts();
+      alert("Product image deleted successfully");
+    } catch (error) {
+      console.error("Error deleting product image:", error);
+      alert(error instanceof Error ? error.message : "Failed to delete product image");
     }
   };
 
@@ -315,20 +373,67 @@ export default function ManageProductsPage() {
                       </SelectItem>
                     </Select>
 
-                    <Input
-                      label="Image URL"
-                      placeholder="https://example.com/images/product.jpg"
-                      value={formData.imageUrl}
-                      onChange={(e) => {
-                        setFormData({ ...formData, imageUrl: e.target.value });
-                        setImagePreview(e.target.value);
-                      }}
-                      isRequired
-                      fullWidth
-                    />
+                    <div className="space-y-3">
+                      <label className="block text-sm font-medium">
+                        Product Image <span className="text-danger">*</span>
+                      </label>
+                      
+                      {/* 文件上传 */}
+                      <div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageFileChange}
+                          className="hidden"
+                          id="product-image-input"
+                        />
+                        <label htmlFor="product-image-input">
+                          <Button
+                            as="span"
+                            size="sm"
+                            variant="flat"
+                            color="primary"
+                            className="cursor-pointer"
+                            isDisabled={isSubmitting}
+                          >
+                            {imageFile ? "Change Image File" : "Upload Image File"}
+                          </Button>
+                        </label>
+                        {imageFile && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            Selected: {imageFile.name}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="relative">
+                        <div className="absolute inset-0 flex items-center">
+                          <div className="w-full border-t border-gray-300 dark:border-gray-600" />
+                        </div>
+                        <div className="relative flex justify-center text-xs uppercase">
+                          <span className="bg-gray-50 dark:bg-gray-900 px-2 text-gray-500">
+                            Or
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* URL 输入 */}
+                      <Input
+                        label="Image URL"
+                        placeholder="https://example.com/images/product.jpg"
+                        value={formData.imageUrl}
+                        onChange={(e) => {
+                          setFormData({ ...formData, imageUrl: e.target.value });
+                          setImagePreview(e.target.value);
+                          setImageFile(null); // 清除文件选择
+                        }}
+                        isDisabled={!!imageFile}
+                        fullWidth
+                      />
+                    </div>
 
                     {imagePreview && (
-                      <div className="mt-4">
+                      <div className="mt-4 space-y-2">
                         <Image
                           src={imagePreview}
                           alt="Preview"
@@ -336,6 +441,17 @@ export default function ManageProductsPage() {
                           height={200}
                           className="object-cover rounded"
                         />
+                        {editingProduct && editingProduct.imageUrl && !imageFile && (
+                          <Button
+                            size="sm"
+                            variant="flat"
+                            color="danger"
+                            onPress={() => handleDeleteImage(editingProduct.id)}
+                            isDisabled={isSubmitting}
+                          >
+                            Delete Current Image
+                          </Button>
+                        )}
                       </div>
                     )}
                   </div>

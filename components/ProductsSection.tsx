@@ -40,13 +40,11 @@ export default function ProductsSection() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {products.map((product) => (
             <Card key={product.id} className="hover:scale-105 transition-transform">
-              <CardHeader className="p-0">
+              <CardHeader className="p-0 flex justify-center items-center bg-default-100 min-h-[200px]">
                 <Image
                   src={product.imageUrl}
                   alt={product.name}
-                  width="100%"
-                  height={200}
-                  className="object-cover"
+                  className="max-w-full max-h-[200px] object-contain"
                 />
               </CardHeader>
               <CardBody>

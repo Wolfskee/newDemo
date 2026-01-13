@@ -24,6 +24,7 @@ export const useAdminLogin = () => {
                 id: authData.user?.id || "",
                 email: authData.user?.email || email.trim(),
                 role: authData.user?.role || "",
+                username: authData.user?.username || "",
             };
             localStorage.setItem("adminUser", JSON.stringify(adminUserData));
 

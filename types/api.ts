@@ -73,6 +73,7 @@ export interface User {
   email: string;
   role: "CUSTOMER" | "ADMIN" | string;
   phone: string;
+  profileImage?: string; // 可选的用户头像 URL
   createdAt: string;
   updatedAt: string;
 }
@@ -145,4 +146,26 @@ export interface OrderListResponse {
   currentPage: number;
   hasNextPage: boolean;
   hasPreviousPage: boolean;
+}
+
+// 可用性接口
+export interface Availability {
+  id: string;
+  date: string; // ISO 格式
+  startTime: string; // ISO 格式
+  endTime: string; // ISO 格式
+  status: string; // OPEN, CLOSED 等
+  employeeId: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+// 可用性列表响应接口
+export interface AvailabilityListResponse {
+  availabilities: Availability[];
+  total?: number;
+  totalPages?: number;
+  currentPage?: number;
+  hasNextPage?: boolean;
+  hasPreviousPage?: boolean;
 }

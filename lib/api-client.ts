@@ -34,7 +34,7 @@ export const clearTokens = (): void => {
 let isRefreshing = false;
 let refreshPromise: Promise<{ accessToken: string; refreshToken: string } | null> | null = null;
 
-const refreshAccessToken = async (): Promise<{ accessToken: string; refreshToken: string } | null> => {
+export const refreshAccessToken = async (): Promise<{ accessToken: string; refreshToken: string } | null> => {
   if (isRefreshing && refreshPromise) {
     return refreshPromise;
   }
@@ -104,6 +104,13 @@ export const apiRequest = async <T = any>(
     const accessToken = getAccessToken();
     if (accessToken) {
       requestHeaders["Authorization"] = `Bearer ${accessToken}`;
+    } else {
+      // Token 不存在，记录警告
+      console.warn("No access token found for authenticated request to:", endpoint);
+      // 如果 token 不存在，可能需要重新登录
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("auth:logout"));
+      }
     }
   }
 
@@ -156,10 +163,50 @@ export const apiGet = <T = any>(
   const { params, ...restOptions } = options || {};
   return apiRequest<T>(url, { ...restOptions, method: "GET" }).then(async (res) => {
     if (!res.ok) {
-      const error = await res.json().catch(() => ({ message: "Request failed" }));
-      throw new Error(error.message || `HTTP ${res.status}`);
+      // 检查响应是否有内容
+      const contentType = res.headers.get("content-type");
+      const contentLength = res.headers.get("content-length");
+      
+      let errorMessage = `HTTP ${res.status}: ${res.statusText}`;
+      
+      // 只有当响应是 JSON 格式时才尝试解析
+      if (contentType && contentType.includes("application/json") && contentLength !== "0") {
+        try {
+          const errorText = await res.text();
+          if (errorText) {
+            try {
+              const error = JSON.parse(errorText);
+              errorMessage = error.message || error.error || errorMessage;
+            } catch {
+              // 如果不是有效的 JSON，使用原始文本
+              errorMessage = errorText || errorMessage;
+            }
+          }
+        } catch (e) {
+          // 如果读取失败，使用默认错误消息
+          console.error("Failed to read error response:", e);
+        }
+      }
+      
+      throw new Error(errorMessage);
     }
-    return res.json();
+    
+    // 检查响应是否有内容
+    const contentLength = res.headers.get("content-length");
+    if (contentLength === "0") {
+      return {} as T;
+    }
+    
+    try {
+      const text = await res.text();
+      if (!text) {
+        return {} as T;
+      }
+      return JSON.parse(text) as T;
+    } catch (e) {
+      console.error("Failed to parse response as JSON:", e);
+      return {} as T;
+    }
   });
 };
 
@@ -174,10 +221,70 @@ export const apiPost = <T = any>(
     body: data ? JSON.stringify(data) : undefined,
   }).then(async (res) => {
     if (!res.ok) {
-      const error = await res.json().catch(() => ({ message: "Request failed" }));
-      throw new Error(error.message || `HTTP ${res.status}`);
+      // 检查响应是否有内容
+      const contentType = res.headers.get("content-type");
+      const contentLength = res.headers.get("content-length");
+      
+      let errorMessage = `HTTP ${res.status}: ${res.statusText}`;
+      
+      // 只有当响应是 JSON 格式时才尝试解析
+      if (contentType && contentType.includes("application/json") && contentLength !== "0") {
+        try {
+          const errorText = await res.text();
+          if (errorText) {
+            try {
+              const error = JSON.parse(errorText);
+              errorMessage = error.message || error.error || errorMessage;
+            } catch {
+              // 如果不是有效的 JSON，使用原始文本
+              errorMessage = errorText || errorMessage;
+            }
+          }
+        } catch (e) {
+          // 如果读取失败，使用默认错误消息
+          console.error("Failed to read error response:", e);
+        }
+      }
+      
+      throw new Error(errorMessage);
     }
-    return res.json();
+    
+    // 处理 204 No Content 响应
+    if (res.status === 204) {
+      return {} as T;
+    }
+    
+    // 检查响应是否有内容
+    const contentLength = res.headers.get("content-length");
+    const contentType = res.headers.get("content-type");
+    
+    // 如果内容长度为 0，返回空对象
+    if (contentLength === "0") {
+      return {} as T;
+    }
+    
+    // 尝试读取并解析响应
+    try {
+      const text = await res.text();
+      
+      // 如果响应体为空，返回空对象
+      if (!text || text.trim() === "") {
+        return {} as T;
+      }
+      
+      // 尝试解析为 JSON
+      try {
+        return JSON.parse(text) as T;
+      } catch (parseError) {
+        // 如果不是有效的 JSON，返回空对象（或者可以根据需要返回文本）
+        console.warn("Response is not valid JSON:", text);
+        return {} as T;
+      }
+    } catch (readError) {
+      // 如果读取响应失败，返回空对象
+      console.error("Failed to read response:", readError);
+      return {} as T;
+    }
   });
 };
 
@@ -192,23 +299,182 @@ export const apiPut = <T = any>(
     body: data ? JSON.stringify(data) : undefined,
   }).then(async (res) => {
     if (!res.ok) {
-      const error = await res.json().catch(() => ({ message: "Request failed" }));
-      throw new Error(error.message || `HTTP ${res.status}`);
+      // 检查响应是否有内容
+      const contentType = res.headers.get("content-type");
+      const contentLength = res.headers.get("content-length");
+      
+      let errorMessage = `HTTP ${res.status}: ${res.statusText}`;
+      
+      // 只有当响应是 JSON 格式时才尝试解析
+      if (contentType && contentType.includes("application/json") && contentLength !== "0") {
+        try {
+          const errorText = await res.text();
+          if (errorText) {
+            try {
+              const error = JSON.parse(errorText);
+              errorMessage = error.message || error.error || errorMessage;
+            } catch {
+              // 如果不是有效的 JSON，使用原始文本
+              errorMessage = errorText || errorMessage;
+            }
+          }
+        } catch (e) {
+          // 如果读取失败，使用默认错误消息
+          console.error("Failed to read error response:", e);
+        }
+      }
+      
+      throw new Error(errorMessage);
     }
-    return res.json();
+    
+    // 检查响应是否有内容
+    const contentLength = res.headers.get("content-length");
+    if (contentLength === "0") {
+      return {} as T;
+    }
+    
+    try {
+      const text = await res.text();
+      if (!text) {
+        return {} as T;
+      }
+      return JSON.parse(text) as T;
+    } catch (e) {
+      console.error("Failed to parse response as JSON:", e);
+      return {} as T;
+    }
   });
 };
 
 export const apiDelete = <T = any>(endpoint: string, options?: ApiRequestOptions): Promise<T> => {
   return apiRequest<T>(endpoint, { ...options, method: "DELETE" }).then(async (res) => {
     if (!res.ok) {
-      const error = await res.json().catch(() => ({ message: "Request failed" }));
-      throw new Error(error.message || `HTTP ${res.status}`);
+      // 检查响应是否有内容
+      const contentType = res.headers.get("content-type");
+      const contentLength = res.headers.get("content-length");
+      
+      let errorMessage = `HTTP ${res.status}: ${res.statusText}`;
+      
+      // 只有当响应是 JSON 格式时才尝试解析
+      if (contentType && contentType.includes("application/json") && contentLength !== "0") {
+        try {
+          const errorText = await res.text();
+          if (errorText) {
+            try {
+              const error = JSON.parse(errorText);
+              errorMessage = error.message || error.error || errorMessage;
+            } catch {
+              // 如果不是有效的 JSON，使用原始文本
+              errorMessage = errorText || errorMessage;
+            }
+          }
+        } catch (e) {
+          // 如果读取失败，使用默认错误消息
+          console.error("Failed to read error response:", e);
+        }
+      }
+      
+      throw new Error(errorMessage);
     }
+    
     // DELETE 可能返回空响应
     if (res.status === 204 || res.headers.get("content-length") === "0") {
       return {} as T;
     }
-    return res.json();
+    
+    // 检查响应是否有内容
+    const contentType = res.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      return {} as T;
+    }
+    
+    try {
+      const text = await res.text();
+      if (!text) {
+        return {} as T;
+      }
+      return JSON.parse(text) as T;
+    } catch (e) {
+      console.error("Failed to parse response as JSON:", e);
+      return {} as T;
+    }
   });
+};
+
+// 文件上传函数（使用 FormData）
+export const apiUploadFile = async <T = any>(
+  endpoint: string,
+  file: File,
+  options?: ApiRequestOptions & { fieldName?: string }
+): Promise<T> => {
+  const { skipAuth = false, fieldName = "file", ...restOptions } = options || {};
+  
+  // 创建 FormData
+  const formData = new FormData();
+  formData.append(fieldName, file);
+
+  // 构建请求头 - 文件上传时不要设置 Content-Type，让浏览器自动设置 boundary
+  const requestHeaders: Record<string, string> = {};
+  
+  // 如果不是跳过认证的请求，添加 access token
+  if (!skipAuth) {
+    const accessToken = getAccessToken();
+    if (accessToken) {
+      requestHeaders["Authorization"] = `Bearer ${accessToken}`;
+    }
+  }
+
+  // 发送请求的辅助函数
+  const sendUploadRequest = (headers: Record<string, string>): Promise<Response> => {
+    // 重新创建 FormData 以确保可以多次使用
+    const uploadFormData = new FormData();
+    uploadFormData.append(fieldName, file);
+    
+    return fetch(apiUrl(endpoint), {
+      ...restOptions,
+      method: "POST",
+      body: uploadFormData,
+      headers: headers,
+    });
+  };
+
+  // 首次发送请求
+  let response = await sendUploadRequest(requestHeaders);
+
+  // 如果返回 401 且不是跳过认证的请求，尝试刷新 token
+  if (response.status === 401 && !skipAuth) {
+    const newTokens = await refreshAccessToken();
+    
+    if (newTokens) {
+      // 使用新的 token 重试请求
+      requestHeaders["Authorization"] = `Bearer ${newTokens.accessToken}`;
+      response = await sendUploadRequest(requestHeaders);
+    } else {
+      // 刷新失败，可能需要重新登录
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("auth:logout"));
+      }
+    }
+  }
+
+  // 处理响应
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: "Upload failed" }));
+    throw new Error(error.message || `HTTP ${response.status}`);
+  }
+
+  // 处理 201 或其他成功状态码，可能没有响应体
+  if (response.status === 201 || response.status === 204) {
+    const contentLength = response.headers.get("content-length");
+    if (contentLength === "0" || !contentLength) {
+      return {} as T;
+    }
+  }
+
+  // 尝试解析 JSON，如果失败则返回空对象
+  try {
+    return await response.json();
+  } catch {
+    return {} as T;
+  }
 };

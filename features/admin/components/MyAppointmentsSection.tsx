@@ -51,11 +51,7 @@ export default function MyAppointmentsSection({ appointments, onAppointmentsUpda
             <h2 className="text-2xl font-bold text-white mb-4">
                 My Appointments
             </h2>
-            {appointments.length === 0 ? (
-                <div className="bg-gray-800 rounded-lg p-6 text-center">
-                    <p className="text-gray-400">No appointments found</p>
-                </div>
-            ) : (
+           
                 <BookingCalendar 
                     appointments={appointments} 
                     onCancelAppointment={handleCancelAppointment}
@@ -63,7 +59,6 @@ export default function MyAppointmentsSection({ appointments, onAppointmentsUpda
                     showCancelButton={true}
                     showConfirmButton={true}
                 />
-            )}
         </div>
     );
 }

@@ -167,6 +167,18 @@ export default function HomePage() {
     calculateAvailableTimeSlots();
   }, [calculateAvailableTimeSlots]);
 
+  // 处理 hash 导航（当从其他页面跳转到 #booking-calendar 时）
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.hash === "#booking-calendar") {
+      const element = document.getElementById("booking-calendar");
+      if (element) {
+        setTimeout(() => {
+          element.scrollIntoView({ behavior: "smooth" });
+        }, 100);
+      }
+    }
+  }, []);
+
   const handleDateClick = (date: string) => {
     if (!user) {
       router.push("/login");
@@ -183,7 +195,7 @@ export default function HomePage() {
       <ServicesSection />
       
       {/* Booking Calendar Section */}
-      <div className="py-12 px-4 bg-gray-50 dark:bg-gray-900">
+      <div id="booking-calendar" className="py-12 px-4 bg-gray-50 dark:bg-gray-900 scroll-mt-20">
         <div className="max-w-7xl mx-auto">
           <h2 className="text-3xl font-bold text-center mb-8 text-gray-900 dark:text-white">
             Book an Appointment

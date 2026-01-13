@@ -42,13 +42,11 @@ export default function ServicesSection() {
             <Card key={service.id} className="hover:shadow-lg transition-shadow">
               <CardBody className="p-8">
                 {service.imageUrl && (
-                  <div className="mb-4 text-center">
+                  <div className="mb-4 flex justify-center items-center min-h-[200px]">
                     <Image
                       src={service.imageUrl}
                       alt={service.name}
-                      width={200}
-                      height={200}
-                      className="object-cover rounded-lg mx-auto"
+                      className="max-w-full max-h-[200px] object-contain rounded-lg"
                     />
                   </div>
                 )}

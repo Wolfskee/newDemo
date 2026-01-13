@@ -59,7 +59,16 @@ export default function Navbar() {
               if (user) {
                 router.push("/profile#booking");
               } else {
-                router.push("/login");
+                if (pathname === "/") {
+                  // 如果在首页，滚动到 Calendar
+                  const element = document.getElementById("booking-calendar");
+                  if (element) {
+                    element.scrollIntoView({ behavior: "smooth" });
+                  }
+                } else {
+                  // 如果不在首页，跳转到首页的 Calendar 锚点
+                  router.push("/#booking-calendar");
+                }
               }
             }}
           >
@@ -115,7 +124,16 @@ export default function Navbar() {
               if (user) {
                 router.push("/profile#booking");
               } else {
-                router.push("/login");
+                if (pathname === "/") {
+                  // 如果在首页，滚动到 Calendar
+                  const element = document.getElementById("booking-calendar");
+                  if (element) {
+                    element.scrollIntoView({ behavior: "smooth" });
+                  }
+                } else {
+                  // 如果不在首页，跳转到首页的 Calendar 锚点
+                  router.push("/#booking-calendar");
+                }
               }
             }}
           >
@@ -211,6 +229,7 @@ export default function Navbar() {
                     as="button"
                     className="transition-transform cursor-pointer"
                     name={user.username || user.email}
+                    src={user.profileImage}
                     size="sm"
                     fallback="👤"
                   />

@@ -13,7 +13,8 @@ export default function ProfileCard({ user }: ProfileCardProps) {
             <CardBody className="items-center pt-8 pb-6">
                 <Avatar
                     size="lg"
-                    name={user.email}
+                    name={user.username || user.email}
+                    src={user.profileImage}
                     fallback="👤"
                     className="w-24 h-24 mb-4"
                 />
