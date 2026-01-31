@@ -1,6 +1,6 @@
 "use client";
 
-import {useMemo, useState, useEffect} from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   Button,
   Card,
@@ -21,8 +21,8 @@ import { User, UserListResponse, Availability } from "@/types/api";
 import EmployeeAvailabilityForm from "./EmployeeAvailabilityForm";
 
 type Employee = { id: string; name: string; email?: string; phone?: string; role?: string };
-type Assignment = { 
-  employeeId: string; 
+type Assignment = {
+  employeeId: string;
   date: string; // date: YYYY-MM-DD
   availabilityId?: string;
   startTime?: string;
@@ -59,8 +59,8 @@ function isToday(d: Date) {
   );
 }
 function fmtWeekRange(days: Date[]) {
-  const start = days[0].toLocaleDateString(LOCALE, {month: "long", day: "numeric"});
-  const end = days[6].toLocaleDateString(LOCALE, {month: "long", day: "numeric"});
+  const start = days[0].toLocaleDateString(LOCALE, { month: "long", day: "numeric" });
+  const end = days[6].toLocaleDateString(LOCALE, { month: "long", day: "numeric" });
   return `${start} — ${end}`;
 }
 function formatTimeRange(startTime: string, endTime: string): string {
@@ -81,9 +81,10 @@ function formatTimeRange(startTime: string, endTime: string): string {
 interface DayStaffScheduleProps {
   readOnly?: boolean; // 如果为 true，则只显示不能更改
   employeeId?: string; // 员工ID，用于在只读模式下显示可用性表单
+  refreshTrigger?: number; // 外部触发刷新
 }
 
-export default function DayStaffSchedule({ readOnly = false, employeeId }: DayStaffScheduleProps) {
+export default function DayStaffSchedule({ readOnly = false, employeeId, refreshTrigger }: DayStaffScheduleProps) {
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date()));
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -104,6 +105,8 @@ export default function DayStaffSchedule({ readOnly = false, employeeId }: DaySt
   const [open, setOpen] = useState(false);
   const [activeDate, setActiveDate] = useState<string | null>(null);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
+  const [availableEmployees, setAvailableEmployees] = useState<Employee[]>([]);
+  const [loadingAvailableEmployees, setLoadingAvailableEmployees] = useState(false);
 
   // 从后端获取员工数据
   useEffect(() => {
@@ -125,7 +128,7 @@ export default function DayStaffSchedule({ readOnly = false, employeeId }: DaySt
           role: user.role === "EMPLOYEE" || user.role === "employee" ? "Employee" : undefined,
         }));
         setEmployees(formattedEmployees);
-        
+
         // 存储完整的用户信息映射（包括所有用户，不仅仅是员工）
         const userMap = new Map<string, User>();
         (data.users || []).forEach((user: User) => {
@@ -144,7 +147,7 @@ export default function DayStaffSchedule({ readOnly = false, employeeId }: DaySt
   }, []);
 
   const days = useMemo(
-    () => Array.from({length: 7}, (_, i) => addDays(weekStart, i)),
+    () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
     [weekStart],
   );
 
@@ -156,11 +159,11 @@ export default function DayStaffSchedule({ readOnly = false, employeeId }: DaySt
   useEffect(() => {
     const fetchAssignedAvailabilities = async () => {
       if (loading) return; // 等待员工数据加载完成
-      
+
       try {
         setLoadingAssignments(true);
         const assignedList: Assignment[] = [];
-        
+
         // 获取当前周每一天的 ASSIGNED availability
         for (const day of days) {
           const dateStr = toISODate(day);
@@ -172,7 +175,7 @@ export default function DayStaffSchedule({ readOnly = false, employeeId }: DaySt
                 params: { date: dateStr },
               }
             );
-            
+
             // 处理不同的响应格式
             let availabilities: Availability[] = [];
             if (Array.isArray(response)) {
@@ -182,7 +185,7 @@ export default function DayStaffSchedule({ readOnly = false, employeeId }: DaySt
             } else if (response?.data && Array.isArray(response.data)) {
               availabilities = response.data;
             }
-            
+
             // 过滤出 ASSIGNED 状态的 availability
             const assigned = availabilities.filter((a: Availability) => a.status === "ASSIGNED");
             assigned.forEach((a: Availability) => {
@@ -198,7 +201,7 @@ export default function DayStaffSchedule({ readOnly = false, employeeId }: DaySt
             console.error(`Error fetching availability for ${dateStr}:`, err);
           }
         }
-        
+
         setAssignments(assignedList);
       } catch (err) {
         console.error("Error fetching assigned availabilities:", err);
@@ -208,7 +211,7 @@ export default function DayStaffSchedule({ readOnly = false, employeeId }: DaySt
     };
 
     fetchAssignedAvailabilities();
-  }, [weekStart, days, loading]);
+  }, [weekStart, days, loading, refreshTrigger]);
 
   function openAddStaff(date: string) {
     setActiveDate(date);
@@ -216,12 +219,56 @@ export default function DayStaffSchedule({ readOnly = false, employeeId }: DaySt
     setOpen(true);
   }
 
+  // Fetch available employees when modal opens with a date
+  useEffect(() => {
+    if (!open || !activeDate) return;
+
+    const fetchAvailableEmployees = async () => {
+      setLoadingAvailableEmployees(true);
+      try {
+        const response = await apiGet<any>(
+          "availability",
+          {
+            params: { date: activeDate },
+          }
+        );
+
+        let availabilities: Availability[] = [];
+        if (Array.isArray(response)) {
+          availabilities = response;
+        } else if (response?.availabilities && Array.isArray(response.availabilities)) {
+          availabilities = response.availabilities;
+        } else if (response?.data && Array.isArray(response.data)) {
+          availabilities = response.data;
+        }
+
+        // Get IDs of employees with OPEN availability
+        const openEmployeeIds = new Set(
+          availabilities
+            .filter((a: Availability) => a.status === "OPEN")
+            .map((a: Availability) => a.employeeId)
+        );
+
+        // Filter employees list
+        const filtered = employees.filter((e) => openEmployeeIds.has(e.id));
+        setAvailableEmployees(filtered);
+      } catch (error) {
+        console.error("Error fetching available employees:", error);
+        setAvailableEmployees([]);
+      } finally {
+        setLoadingAvailableEmployees(false);
+      }
+    };
+
+    fetchAvailableEmployees();
+  }, [open, activeDate, employees]);
+
   async function addStaffToDay() {
     if (!activeDate || !selectedEmployeeId) return;
-    
+
     try {
       setIsSubmitting(true);
-      
+
       // 获取该日期和员工的 availability
       const response = await apiGet<any>(
         "availability",
@@ -232,7 +279,7 @@ export default function DayStaffSchedule({ readOnly = false, employeeId }: DaySt
           },
         }
       );
-      
+
       // 处理不同的响应格式
       let availabilities: Availability[] = [];
       if (Array.isArray(response)) {
@@ -242,23 +289,23 @@ export default function DayStaffSchedule({ readOnly = false, employeeId }: DaySt
       } else if (response?.data && Array.isArray(response.data)) {
         availabilities = response.data;
       }
-      
+
       // 验证返回的 availability 是否属于选择的员工
       const validAvailabilities = availabilities.filter(
         (a: Availability) => a.employeeId === selectedEmployeeId && a.status === "OPEN"
       );
-      
+
       if (validAvailabilities.length === 0) {
         alert("No available time slot found for this employee on this date. Please ensure the employee has created an availability with OPEN status.");
         return;
       }
-      
+
       // 使用 API 返回的顺序，选择第一个有效的 OPEN availability
       const openAvailability = validAvailabilities[0];
-      
+
       // 调用 PUT /availability/assign/{id} 来将状态改为 ASSIGNED
       await apiPut(`availability/assign/${openAvailability.id}`);
-      
+
       // 刷新 assignments
       const assignedList: Assignment[] = [];
       for (const day of days) {
@@ -270,7 +317,7 @@ export default function DayStaffSchedule({ readOnly = false, employeeId }: DaySt
               params: { date: dateStr },
             }
           );
-          
+
           let dayAvailabilities: Availability[] = [];
           if (Array.isArray(dayResponse)) {
             dayAvailabilities = dayResponse;
@@ -279,7 +326,7 @@ export default function DayStaffSchedule({ readOnly = false, employeeId }: DaySt
           } else if (dayResponse?.data && Array.isArray(dayResponse.data)) {
             dayAvailabilities = dayResponse.data;
           }
-          
+
           const assigned = dayAvailabilities.filter((a: Availability) => a.status === "ASSIGNED");
           assigned.forEach((a: Availability) => {
             assignedList.push({
@@ -294,7 +341,7 @@ export default function DayStaffSchedule({ readOnly = false, employeeId }: DaySt
           console.error(`Error fetching availability for ${dateStr}:`, err);
         }
       }
-      
+
       setAssignments(assignedList);
       setOpen(false);
     } catch (error) {
@@ -338,7 +385,7 @@ export default function DayStaffSchedule({ readOnly = false, employeeId }: DaySt
       {/* 如果是只读模式且提供了员工ID，显示可用性表单 */}
       {readOnly && employeeId && (
         <div className="mb-6">
-          <EmployeeAvailabilityForm 
+          <EmployeeAvailabilityForm
             employeeId={employeeId}
             onSuccess={() => {
               // 可以在这里刷新排班数据
@@ -353,9 +400,9 @@ export default function DayStaffSchedule({ readOnly = false, employeeId }: DaySt
           <div className="flex w-full flex-col gap-3 sm:gap-4 sm:flex-row sm:items-center sm:justify-between">
             <h3 className="text-lg sm:text-xl md:text-2xl font-semibold">Staff Schedule</h3>
             <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
-              <Button 
-                size="sm" 
-                variant="flat" 
+              <Button
+                size="sm"
+                variant="flat"
                 onPress={() => setWeekStart(addDays(weekStart, -7))}
                 className="min-w-[40px]"
               >
@@ -364,9 +411,9 @@ export default function DayStaffSchedule({ readOnly = false, employeeId }: DaySt
               <span className="text-sm sm:text-base md:text-lg font-semibold text-center flex-1 sm:flex-none sm:min-w-[180px] px-2">
                 {fmtWeekRange(days)}
               </span>
-              <Button 
-                size="sm" 
-                variant="flat" 
+              <Button
+                size="sm"
+                variant="flat"
                 onPress={() => setWeekStart(addDays(weekStart, 7))}
                 className="min-w-[40px]"
               >
@@ -381,8 +428,8 @@ export default function DayStaffSchedule({ readOnly = false, employeeId }: DaySt
           <div className="flex flex-col gap-3 md:grid md:grid-cols-7 md:gap-2">
             {days.map((d) => {
               const dateStr = toISODate(d);
-              const weekday = d.toLocaleDateString(LOCALE, {weekday: "short"});
-              const dayNum = d.toLocaleDateString(LOCALE, {day: "numeric"});
+              const weekday = d.toLocaleDateString(LOCALE, { weekday: "short" });
+              const dayNum = d.toLocaleDateString(LOCALE, { day: "numeric" });
               const isTodayDate = isToday(d);
 
               const dayAssignments = assignments.filter((a) => a.date === dateStr);
@@ -392,11 +439,10 @@ export default function DayStaffSchedule({ readOnly = false, employeeId }: DaySt
                   key={dateStr}
                   radius="lg"
                   shadow="sm"
-                  className={`border w-full sm:w-auto min-w-0 ${
-                    isTodayDate
-                      ? "border-primary-500 bg-primary-50 dark:bg-primary-900/20 shadow-md"
-                      : "border-default-200 bg-content1"
-                  }`}
+                  className={`border w-full sm:w-auto min-w-0 ${isTodayDate
+                    ? "border-primary-500 bg-primary-50 dark:bg-primary-900/20 shadow-md"
+                    : "border-default-200 bg-content1"
+                    }`}
                 >
                   <CardBody className="p-3 sm:p-3">
                     {/* Day header */}
@@ -426,7 +472,7 @@ export default function DayStaffSchedule({ readOnly = false, employeeId }: DaySt
                                 <div className="text-xs sm:text-sm font-semibold truncate w-full">
                                   {emp?.name ?? fullUser?.username ?? fullUser?.email ?? a.employeeId}
                                 </div>
-                                
+
                                 {/* 角色标签 */}
                                 {emp?.role && (
                                   <div className="flex justify-center">
@@ -435,7 +481,7 @@ export default function DayStaffSchedule({ readOnly = false, employeeId }: DaySt
                                     </Chip>
                                   </div>
                                 )}
-                                
+
                                 {/* Availability 时间段 */}
                                 {a.startTime && a.endTime && (
                                   <div className="text-xs text-foreground-600 font-medium w-full break-words">
@@ -482,8 +528,8 @@ export default function DayStaffSchedule({ readOnly = false, employeeId }: DaySt
       </Card>
 
       {/* Add staff modal */}
-      <Modal 
-        isOpen={open} 
+      <Modal
+        isOpen={open}
         onOpenChange={setOpen}
         size="lg"
         scrollBehavior="inside"
@@ -506,28 +552,29 @@ export default function DayStaffSchedule({ readOnly = false, employeeId }: DaySt
                   classNames={{
                     base: "w-full",
                   }}
+                  isLoading={loadingAvailableEmployees}
                 >
-                  {employees.map((e) => (
+                  {availableEmployees.map((e) => (
                     <AutocompleteItem key={e.id} textValue={e.name}>
                       {e.name}
                     </AutocompleteItem>
                   ))}
                 </Autocomplete>
-                {employees.length === 0 && (
-                  <p className="text-sm text-foreground-500 mt-2">No employees available</p>
+                {!loadingAvailableEmployees && availableEmployees.length === 0 && (
+                  <p className="text-sm text-foreground-500 mt-2">No employees available for this date</p>
                 )}
               </ModalBody>
               <ModalFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
-                <Button 
-                  variant="light" 
+                <Button
+                  variant="light"
                   onPress={onClose}
                   className="w-full sm:w-auto"
                 >
                   Cancel
                 </Button>
-                <Button 
-                  color="primary" 
-                  onPress={addStaffToDay} 
+                <Button
+                  color="primary"
+                  onPress={addStaffToDay}
                   isDisabled={!selectedEmployeeId || isSubmitting}
                   isLoading={isSubmitting}
                   className="w-full sm:w-auto"
