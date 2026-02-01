@@ -93,6 +93,7 @@ export default function DayStaffSchedule({ readOnly = false, employeeId, refresh
   const [error, setError] = useState<string | null>(null);
   const [loadingAssignments, setLoadingAssignments] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [internalRefresh, setInternalRefresh] = useState(0);
 
   // 自动跳转到今天所在的周（组件挂载时）
   useEffect(() => {
@@ -211,12 +212,23 @@ export default function DayStaffSchedule({ readOnly = false, employeeId, refresh
     };
 
     fetchAssignedAvailabilities();
-  }, [weekStart, days, loading, refreshTrigger]);
+  }, [weekStart, days, loading, refreshTrigger, internalRefresh]);
 
-  function openAddStaff(date: string) {
-    setActiveDate(date);
-    setSelectedEmployeeId(null);
-    setOpen(true);
+  async function removeAssignment(date: string, employeeId: string) {
+    const assignment = assignments.find((a) => a.date === date && a.employeeId === employeeId);
+    if (!assignment?.availabilityId) return;
+
+    if (!confirm("Are you sure you want to remove this staff from the schedule?")) {
+      return;
+    }
+
+    try {
+      await apiPut(`availability/${assignment.availabilityId}`, { status: "OPEN" });
+      setInternalRefresh((prev) => prev + 1);
+    } catch (error) {
+      console.error("Error removing assignment:", error);
+      alert(error instanceof Error ? error.message : "Failed to remove staff");
+    }
   }
 
   // Fetch available employees when modal opens with a date
@@ -352,9 +364,10 @@ export default function DayStaffSchedule({ readOnly = false, employeeId, refresh
     }
   }
 
-  function removeAssignment(date: string, employeeId: string) {
-    // 暂时只从本地状态移除，如果需要从 API 取消分配，可以在这里调用 API
-    setAssignments((prev) => prev.filter((a) => !(a.date === date && a.employeeId === employeeId)));
+  function openAddStaff(date: string) {
+    setActiveDate(date);
+    setSelectedEmployeeId(null);
+    setOpen(true);
   }
 
   if (loading) {
