@@ -13,6 +13,7 @@ export default function SchedulingPage() {
     const [isNavExpanded, setIsNavExpanded] = useState(true);
     const isEmployee = adminUser?.role === "EMPLOYEE" || adminUser?.role === "employee";
     const isAdmin = adminUser?.role?.toUpperCase() === "ADMIN";
+    const [refreshKey, setRefreshKey] = useState(0);
 
     useEffect(() => {
         // Check admin permission
@@ -32,14 +33,14 @@ export default function SchedulingPage() {
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
             {/* 左侧导航栏 */}
-            <QuickActionsCard 
-                adminUser={adminUser} 
+            <QuickActionsCard
+                adminUser={adminUser}
                 isExpanded={isNavExpanded}
                 onToggle={() => setIsNavExpanded(!isNavExpanded)}
             />
-            
+
             {/* 主内容区 */}
-            <main 
+            <main
                 className={`
                     flex-1 transition-all duration-300 ease-in-out
                 `}
@@ -69,14 +70,15 @@ export default function SchedulingPage() {
                         {isAdmin ? (
                             // ADMIN 用户：显示所有员工的 availability 管理
                             <div className="space-y-6">
-                                <ManageEmployeeAvailability />
-                                <DayStaffSchedule 
+                                <ManageEmployeeAvailability onSuccess={() => setRefreshKey(prev => prev + 1)} />
+                                <DayStaffSchedule
                                     readOnly={false}
+                                    refreshTrigger={refreshKey}
                                 />
                             </div>
                         ) : (
                             // Employee 用户：只显示自己的排班和可用性表单
-                            <DayStaffSchedule 
+                            <DayStaffSchedule
                                 readOnly={isEmployee}
                                 employeeId={isEmployee ? adminUser.id : undefined}
                             />

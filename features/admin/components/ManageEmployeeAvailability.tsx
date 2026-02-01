@@ -36,17 +36,18 @@ interface ManageEmployeeAvailabilityProps {
 export default function ManageEmployeeAvailability({ onSuccess }: ManageEmployeeAvailabilityProps) {
   const [employees, setEmployees] = useState<User[]>([]);
   const [selectedEmployee, setSelectedEmployee] = useState<User | null>(null);
+  const [editingAvailability, setEditingAvailability] = useState<Availability | null>(null);
   const [availabilities, setAvailabilities] = useState<Availability[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingAvailabilities, setLoadingAvailabilities] = useState(false);
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
-  
+
   // 查询日期（用于获取 availability）
   const [queryDate, setQueryDate] = useState<CalendarDate | null>(() => {
     const today = new Date();
     return parseDate(today.toISOString().split("T")[0]);
   });
-  
+
   // 表单状态（用于添加）
   const [selectedDate, setSelectedDate] = useState<CalendarDate | null>(null);
   const [startTime, setStartTime] = useState<string>("09:00");
@@ -83,30 +84,26 @@ export default function ManageEmployeeAvailability({ onSuccess }: ManageEmployee
 
   const fetchEmployeeAvailability = async (employeeId?: string) => {
     if (!queryDate) return;
-    
+
     try {
       setLoadingAvailabilities(true);
       // 格式化日期为 YYYY-MM-DD
       const dateString = `${queryDate.year}-${String(queryDate.month).padStart(2, "0")}-${String(queryDate.day).padStart(2, "0")}`;
-      
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/16994803-dd8c-4919-8923-e3af2b987796',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ManageEmployeeAvailability.tsx:95',message:'fetchEmployeeAvailability started',data:{date:dateString,employeeId:employeeId || 'all'},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
-      
+
+
+
       // API 需要 date 参数（必需），可选 employeeId 参数
       const params: Record<string, string> = {
         date: dateString,
       };
-      
+
       // 如果选择了员工，添加 employeeId 参数
       if (employeeId) {
         params.employeeId = employeeId;
       }
-      
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/16994803-dd8c-4919-8923-e3af2b987796',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ManageEmployeeAvailability.tsx:108',message:'Calling API with params',data:{params:params},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
-      
+
+
+
       // API 直接返回数组格式 [{...}], 不是 {availabilities: [...]}
       const response = await apiGet<any>(
         `availability`,
@@ -114,11 +111,9 @@ export default function ManageEmployeeAvailability({ onSuccess }: ManageEmployee
           params: params,
         }
       );
-      
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/16994803-dd8c-4919-8923-e3af2b987796',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ManageEmployeeAvailability.tsx:120',message:'Raw API response received',data:{responseType:Array.isArray(response) ? 'array' : typeof response,responseLength:Array.isArray(response) ? response.length : (response?.availabilities?.length || response?.data?.length || 0),responsePreview:JSON.stringify(response).substring(0, 500)},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'C'})}).catch(()=>{});
-      // #endregion
-      
+
+
+
       // 处理不同的响应格式
       let availabilities: Availability[] = [];
       if (Array.isArray(response)) {
@@ -131,11 +126,9 @@ export default function ManageEmployeeAvailability({ onSuccess }: ManageEmployee
         // API 返回对象，包含 data 数组
         availabilities = response.data;
       }
-      
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/16994803-dd8c-4919-8923-e3af2b987796',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ManageEmployeeAvailability.tsx:135',message:'Processed availability data',data:{availabilitiesCount:availabilities.length,availabilities:availabilities},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'C'})}).catch(()=>{});
-      // #endregion
-      
+
+
+
       setAvailabilities(availabilities);
     } catch (error) {
       console.error("Error fetching availability:", error);
@@ -145,12 +138,22 @@ export default function ManageEmployeeAvailability({ onSuccess }: ManageEmployee
     }
   };
 
-  const handleOpenModal = () => {
-    // 重置表单为默认值
-    setSelectedDate(null);
-    setStartTime("09:00");
-    setEndTime("17:00");
-    setStatus("OPEN");
+  const handleOpenModal = (availability?: Availability) => {
+    if (availability) {
+      setEditingAvailability(availability);
+      // parseDate expects YYYY-MM-DD
+      const dateStr = availability.date.split("T")[0];
+      setSelectedDate(parseDate(dateStr));
+      setStartTime(formatTime(availability.startTime));
+      setEndTime(formatTime(availability.endTime));
+      setStatus(availability.status);
+    } else {
+      setEditingAvailability(null);
+      setSelectedDate(null);
+      setStartTime("09:00");
+      setEndTime("17:00");
+      setStatus("OPEN");
+    }
     onOpen();
   };
 
@@ -162,7 +165,10 @@ export default function ManageEmployeeAvailability({ onSuccess }: ManageEmployee
   };
 
   const handleSubmit = async () => {
-    if (!selectedEmployee || !selectedDate) {
+    // Determine target employee ID: use selected employee or the one from the editing record
+    const targetEmployeeId = editingAvailability?.employeeId || selectedEmployee?.id;
+
+    if (!targetEmployeeId || !selectedDate) {
       alert("Please select an employee and date");
       return;
     }
@@ -180,24 +186,28 @@ export default function ManageEmployeeAvailability({ onSuccess }: ManageEmployee
     setIsSubmitting(true);
     try {
       const dateString = `${selectedDate.year}-${String(selectedDate.month).padStart(2, "0")}-${String(selectedDate.day).padStart(2, "0")}`;
-      
+
       const availabilityData = {
         date: combineDateTime(dateString, "00:00"),
         startTime: combineDateTime(dateString, startTime),
         endTime: combineDateTime(dateString, endTime),
         status: status,
-        employeeId: selectedEmployee.id,
+        employeeId: targetEmployeeId,
       };
 
-      // 创建新的 availability
-      await apiPost("availability", availabilityData);
+      // Create or Update availability
+      if (editingAvailability) {
+        await apiPut(`availability/${editingAvailability.id}`, availabilityData);
+      } else {
+        await apiPost("availability", availabilityData);
+      }
 
       // 刷新数据
-      await fetchEmployeeAvailability(selectedEmployee.id);
-      onOpenChange();
+      await fetchEmployeeAvailability(selectedEmployee?.id);
       if (onSuccess) {
         onSuccess();
       }
+      onOpenChange();
     } catch (error) {
       console.error("Error saving availability:", error);
       alert(error instanceof Error ? error.message : "Failed to save availability");
@@ -290,7 +300,6 @@ export default function ManageEmployeeAvailability({ onSuccess }: ManageEmployee
                   label="Query Date"
                   value={queryDate}
                   onChange={(date) => setQueryDate(date)}
-                  minValue={parseDate(new Date().toISOString().split("T")[0])}
                   fullWidth
                   isRequired
                 />
@@ -343,12 +352,7 @@ export default function ManageEmployeeAvailability({ onSuccess }: ManageEmployee
                     </div>
                   ) : (
                     <>
-                      {/* #region agent log */}
-                      {(() => {
-                        fetch('http://127.0.0.1:7242/ingest/16994803-dd8c-4919-8923-e3af2b987796',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ManageEmployeeAvailability.tsx:376',message:'Rendering availability table',data:{availabilitiesCount:availabilities.length,availabilities:availabilities},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'D'})}).catch(()=>{});
-                        return null;
-                      })()}
-                      {/* #endregion */}
+
                       <Table aria-label="Availability table">
                         <TableHeader>
                           <TableColumn>EMPLOYEE</TableColumn>
@@ -379,14 +383,24 @@ export default function ManageEmployeeAvailability({ onSuccess }: ManageEmployee
                                   </Chip>
                                 </TableCell>
                                 <TableCell>
-                                  <Button
-                                    size="sm"
-                                    variant="flat"
-                                    color="danger"
-                                    onPress={() => handleDelete(availability.id)}
-                                  >
-                                    Delete
-                                  </Button>
+                                  <div className="flex gap-2">
+                                    <Button
+                                      size="sm"
+                                      variant="flat"
+                                      color="primary"
+                                      onPress={() => handleOpenModal(availability)}
+                                    >
+                                      Edit
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="flat"
+                                      color="danger"
+                                      onPress={() => handleDelete(availability.id)}
+                                    >
+                                      Delete
+                                    </Button>
+                                  </div>
                                 </TableCell>
                               </TableRow>
                             );
@@ -408,7 +422,7 @@ export default function ManageEmployeeAvailability({ onSuccess }: ManageEmployee
           {(onClose) => (
             <>
               <ModalHeader>
-                Add Availability
+                {editingAvailability ? "Edit Availability" : "Add Availability"}
               </ModalHeader>
               <ModalBody>
                 <div className="space-y-4">
@@ -416,7 +430,6 @@ export default function ManageEmployeeAvailability({ onSuccess }: ManageEmployee
                     label="Date"
                     value={selectedDate}
                     onChange={(date) => setSelectedDate(date)}
-                    minValue={parseDate(new Date().toISOString().split("T")[0])}
                     fullWidth
                     isRequired
                   />
@@ -464,7 +477,7 @@ export default function ManageEmployeeAvailability({ onSuccess }: ManageEmployee
                   onPress={handleSubmit}
                   isLoading={isSubmitting}
                 >
-                  Create
+                  {editingAvailability ? "Save Changes" : "Create"}
                 </Button>
               </ModalFooter>
             </>
