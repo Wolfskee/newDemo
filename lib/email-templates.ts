@@ -65,17 +65,69 @@ export function getEmployeeCredentialsEmail(data: EmployeeCredentialsEmailData):
   };
 }
 
-// 预约确认邮件模板
-export function getAppointmentConfirmationEmail(data: AppointmentConfirmationEmailData): { subject: string; html: string } {
+// 预约请求已发送邮件模板
+export function getAppointmentRequestEmail(data: AppointmentConfirmationEmailData): { subject: string; html: string } {
   const { email, title, date, time, employeeName } = data;
   const formattedDate = new Date(date).toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
     day: "numeric",
   });
-  
+
   return {
-    subject: `Appointment Confirmation: ${title}`,
+    subject: `Appointment Request Sent: ${title}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background-color: #f5a623; color: white; padding: 20px; text-align: center; }
+            .content { padding: 20px; background-color: #f9f9f9; }
+            .appointment-details { background-color: white; padding: 15px; margin: 20px 0; border-left: 4px solid #f5a623; }
+            .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Appointment Request Sent</h1>
+            </div>
+            <div class="content">
+              <p>Dear Customer,</p>
+              <p>Your appointment request has been received and is currently <strong>waiting for confirmation</strong>.</p>
+              <div class="appointment-details">
+                <p><strong>Service:</strong> ${title}</p>
+                <p><strong>Date:</strong> ${formattedDate}</p>
+                <p><strong>Time:</strong> ${time}</p>
+                ${employeeName ? `<p><strong>Requested Employee:</strong> ${employeeName}</p>` : ""}
+              </div>
+              <p>You will receive another email once your appointment is confirmed.</p>
+              <p>If you have any questions, please contact us.</p>
+            </div>
+            <div class="footer">
+              <p>This is an automated email. Please do not reply.</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+  };
+}
+
+// 预约确认邮件模板
+export function getAppointmentConfirmedEmail(data: AppointmentConfirmationEmailData): { subject: string; html: string } {
+  const { email, title, date, time, employeeName } = data;
+  const formattedDate = new Date(date).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
+  return {
+    subject: `Appointment Confirmed: ${title}`,
     html: `
       <!DOCTYPE html>
       <html>
@@ -97,7 +149,7 @@ export function getAppointmentConfirmationEmail(data: AppointmentConfirmationEma
             </div>
             <div class="content">
               <p>Dear Customer,</p>
-              <p>Your appointment has been successfully booked. Here are the details:</p>
+              <p>Great news! Your appointment has been <strong>confirmed</strong>.</p>
               <div class="appointment-details">
                 <p><strong>Service:</strong> ${title}</p>
                 <p><strong>Date:</strong> ${formattedDate}</p>
@@ -116,6 +168,13 @@ export function getAppointmentConfirmationEmail(data: AppointmentConfirmationEma
     `,
   };
 }
+
+// Keep the old function for backward compatibility but mark as deprecated if needed, 
+// or simply redirect it to getAppointmentConfirmedEmail if that was the original intent.
+// However, since we are changing the flow, let's keep getAppointmentConfirmationEmail as an alias to getAppointmentConfirmedEmail logic
+// OR simply remove it if I replace all usages. 
+// For safety, I'll keep it as "Confirmed" just in case other parts use it, but I'll update the BookingForm to use RequestEmail.
+export const getAppointmentConfirmationEmail = getAppointmentConfirmedEmail;
 
 // 用户欢迎邮件模板
 export function getUserWelcomeEmail(data: UserWelcomeEmailData): { subject: string; html: string } {
