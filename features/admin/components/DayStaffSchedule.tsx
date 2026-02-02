@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
 import {
   Button,
   Card,
@@ -16,40 +15,19 @@ import {
   AutocompleteItem,
   Spinner,
 } from "@heroui/react";
-import { apiGet, apiPut } from "@/lib/api-client";
-import { User, UserListResponse, Availability } from "@/types/api";
 import EmployeeAvailabilityForm from "./EmployeeAvailabilityForm";
-
-type Employee = { id: string; name: string; email?: string; phone?: string; role?: string };
-type Assignment = {
-  employeeId: string;
-  date: string; // date: YYYY-MM-DD
-  availabilityId?: string;
-  startTime?: string;
-  endTime?: string;
-};
+import { useDayStaffSchedule } from "../hooks/useDayStaffSchedule";
+import { addDays } from "date-fns"; // Or reuse the helper if not using date-fns yet, but I'll define local helper or import if available. Actually the hook has it. I need to format dates for display.
 
 const LOCALE = "en-US";
 
-function startOfWeek(d: Date) {
-  const x = new Date(d);
-  const day = x.getDay();
-  const diff = (day === 0 ? -6 : 1) - day; // Monday start
-  x.setDate(x.getDate() + diff);
-  x.setHours(0, 0, 0, 0);
-  return x;
-}
-function addDays(d: Date, n: number) {
-  const x = new Date(d);
-  x.setDate(x.getDate() + n);
-  return x;
-}
 function toISODate(d: Date) {
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}`;
 }
+
 function isToday(d: Date) {
   const today = new Date();
   return (
@@ -81,294 +59,47 @@ function formatTimeRange(startTime: string, endTime: string): string {
 interface DayStaffScheduleProps {
   readOnly?: boolean; // 如果为 true，则只显示不能更改
   employeeId?: string; // 员工ID，用于在只读模式下显示可用性表单
-  refreshTrigger?: number; // 外部触发刷新
 }
 
-export default function DayStaffSchedule({ readOnly = false, employeeId, refreshTrigger }: DayStaffScheduleProps) {
-  const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date()));
-  const [assignments, setAssignments] = useState<Assignment[]>([]);
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [usersById, setUsersById] = useState<Map<string, User>>(new Map());
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [loadingAssignments, setLoadingAssignments] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [internalRefresh, setInternalRefresh] = useState(0);
-
-  // 自动跳转到今天所在的周（组件挂载时）
-  useEffect(() => {
-    const today = new Date();
-    const todayWeekStart = startOfWeek(today);
-    setWeekStart(todayWeekStart);
-  }, []); // 只在组件挂载时执行一次
-
-  // modal state
-  const [open, setOpen] = useState(false);
-  const [activeDate, setActiveDate] = useState<string | null>(null);
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
-  const [availableEmployees, setAvailableEmployees] = useState<Employee[]>([]);
-  const [loadingAvailableEmployees, setLoadingAvailableEmployees] = useState(false);
-
-  // 从后端获取员工数据
-  useEffect(() => {
-    const fetchEmployees = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const data: UserListResponse = await apiGet<UserListResponse>("user");
-        // 过滤出员工角色
-        const employeeList = (data.users || []).filter(
-          (user: User) => user.role === "EMPLOYEE" || user.role === "employee"
-        );
-        // 转换为组件需要的格式
-        const formattedEmployees: Employee[] = employeeList.map((user: User) => ({
-          id: user.id,
-          name: user.username || user.email,
-          email: user.email,
-          phone: user.phone,
-          role: user.role === "EMPLOYEE" || user.role === "employee" ? "Employee" : undefined,
-        }));
-        setEmployees(formattedEmployees);
-
-        // 存储完整的用户信息映射（包括所有用户，不仅仅是员工）
-        const userMap = new Map<string, User>();
-        (data.users || []).forEach((user: User) => {
-          userMap.set(user.id, user);
-        });
-        setUsersById(userMap);
-      } catch (err) {
-        console.error("Error fetching employees:", err);
-        setError(err instanceof Error ? err.message : "Failed to fetch employees");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchEmployees();
-  }, []);
-
-  const days = useMemo(
-    () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
-    [weekStart],
-  );
-
-  const employeesById = useMemo(() => {
-    return new Map(employees.map((e) => [e.id, e]));
-  }, [employees]);
-
-  // 从 API 获取当前周所有 ASSIGNED 状态的 availability
-  useEffect(() => {
-    const fetchAssignedAvailabilities = async () => {
-      if (loading) return; // 等待员工数据加载完成
-
-      try {
-        setLoadingAssignments(true);
-        const assignedList: Assignment[] = [];
-
-        // 获取当前周每一天的 ASSIGNED availability
-        for (const day of days) {
-          const dateStr = toISODate(day);
-          try {
-            // 获取该日期的所有 availability
-            const response = await apiGet<any>(
-              "availability",
-              {
-                params: { date: dateStr },
-              }
-            );
-
-            // 处理不同的响应格式
-            let availabilities: Availability[] = [];
-            if (Array.isArray(response)) {
-              availabilities = response;
-            } else if (response?.availabilities && Array.isArray(response.availabilities)) {
-              availabilities = response.availabilities;
-            } else if (response?.data && Array.isArray(response.data)) {
-              availabilities = response.data;
-            }
-
-            // 过滤出 ASSIGNED 状态的 availability
-            const assigned = availabilities.filter((a: Availability) => a.status === "ASSIGNED");
-            assigned.forEach((a: Availability) => {
-              assignedList.push({
-                date: dateStr,
-                employeeId: a.employeeId,
-                availabilityId: a.id,
-                startTime: a.startTime,
-                endTime: a.endTime,
-              });
-            });
-          } catch (err) {
-            console.error(`Error fetching availability for ${dateStr}:`, err);
-          }
-        }
-
-        setAssignments(assignedList);
-      } catch (err) {
-        console.error("Error fetching assigned availabilities:", err);
-      } finally {
-        setLoadingAssignments(false);
-      }
-    };
-
-    fetchAssignedAvailabilities();
-  }, [weekStart, days, loading, refreshTrigger, internalRefresh]);
-
-  async function removeAssignment(date: string, employeeId: string) {
-    const assignment = assignments.find((a) => a.date === date && a.employeeId === employeeId);
-    if (!assignment?.availabilityId) return;
-
-    if (!confirm("Are you sure you want to remove this staff from the schedule?")) {
-      return;
-    }
-
-    try {
-      await apiPut(`availability/${assignment.availabilityId}`, { status: "OPEN" });
-      setInternalRefresh((prev) => prev + 1);
-    } catch (error) {
-      console.error("Error removing assignment:", error);
-      alert(error instanceof Error ? error.message : "Failed to remove staff");
-    }
-  }
-
-  // Fetch available employees when modal opens with a date
-  useEffect(() => {
-    if (!open || !activeDate) return;
-
-    const fetchAvailableEmployees = async () => {
-      setLoadingAvailableEmployees(true);
-      try {
-        const response = await apiGet<any>(
-          "availability",
-          {
-            params: { date: activeDate },
-          }
-        );
-
-        let availabilities: Availability[] = [];
-        if (Array.isArray(response)) {
-          availabilities = response;
-        } else if (response?.availabilities && Array.isArray(response.availabilities)) {
-          availabilities = response.availabilities;
-        } else if (response?.data && Array.isArray(response.data)) {
-          availabilities = response.data;
-        }
-
-        // Get IDs of employees with OPEN availability
-        const openEmployeeIds = new Set(
-          availabilities
-            .filter((a: Availability) => a.status === "OPEN")
-            .map((a: Availability) => a.employeeId)
-        );
-
-        // Filter employees list
-        const filtered = employees.filter((e) => openEmployeeIds.has(e.id));
-        setAvailableEmployees(filtered);
-      } catch (error) {
-        console.error("Error fetching available employees:", error);
-        setAvailableEmployees([]);
-      } finally {
-        setLoadingAvailableEmployees(false);
-      }
-    };
-
-    fetchAvailableEmployees();
-  }, [open, activeDate, employees]);
-
-  async function addStaffToDay() {
-    if (!activeDate || !selectedEmployeeId) return;
-
-    try {
-      setIsSubmitting(true);
-
-      // 获取该日期和员工的 availability
-      const response = await apiGet<any>(
-        "availability",
-        {
-          params: {
-            date: activeDate,
-            employeeId: selectedEmployeeId,
-          },
-        }
-      );
-
-      // 处理不同的响应格式
-      let availabilities: Availability[] = [];
-      if (Array.isArray(response)) {
-        availabilities = response;
-      } else if (response?.availabilities && Array.isArray(response.availabilities)) {
-        availabilities = response.availabilities;
-      } else if (response?.data && Array.isArray(response.data)) {
-        availabilities = response.data;
-      }
-
-      // 验证返回的 availability 是否属于选择的员工
-      const validAvailabilities = availabilities.filter(
-        (a: Availability) => a.employeeId === selectedEmployeeId && a.status === "OPEN"
-      );
-
-      if (validAvailabilities.length === 0) {
-        alert("No available time slot found for this employee on this date. Please ensure the employee has created an availability with OPEN status.");
-        return;
-      }
-
-      // 使用 API 返回的顺序，选择第一个有效的 OPEN availability
-      const openAvailability = validAvailabilities[0];
-
-      // 调用 PUT /availability/assign/{id} 来将状态改为 ASSIGNED
-      await apiPut(`availability/assign/${openAvailability.id}`);
-
-      // 刷新 assignments
-      const assignedList: Assignment[] = [];
-      for (const day of days) {
-        const dateStr = toISODate(day);
-        try {
-          const dayResponse = await apiGet<any>(
-            "availability",
-            {
-              params: { date: dateStr },
-            }
-          );
-
-          let dayAvailabilities: Availability[] = [];
-          if (Array.isArray(dayResponse)) {
-            dayAvailabilities = dayResponse;
-          } else if (dayResponse?.availabilities && Array.isArray(dayResponse.availabilities)) {
-            dayAvailabilities = dayResponse.availabilities;
-          } else if (dayResponse?.data && Array.isArray(dayResponse.data)) {
-            dayAvailabilities = dayResponse.data;
-          }
-
-          const assigned = dayAvailabilities.filter((a: Availability) => a.status === "ASSIGNED");
-          assigned.forEach((a: Availability) => {
-            assignedList.push({
-              date: dateStr,
-              employeeId: a.employeeId,
-              availabilityId: a.id,
-              startTime: a.startTime,
-              endTime: a.endTime,
-            });
-          });
-        } catch (err) {
-          console.error(`Error fetching availability for ${dateStr}:`, err);
-        }
-      }
-
-      setAssignments(assignedList);
-      setOpen(false);
-    } catch (error) {
-      console.error("Error assigning staff:", error);
-      alert(error instanceof Error ? error.message : "Failed to assign staff");
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
+export default function DayStaffSchedule({ readOnly = false, employeeId }: DayStaffScheduleProps) {
+  const {
+    weekStart,
+    setWeekStart,
+    days,
+    assignments,
+    loading,
+    error,
+    employeesById,
+    usersById,
+    openAddStaffModal,
+    setOpenAddStaffModal,
+    availableEmployees,
+    loadingAvailableEmployees,
+    isSubmitting,
+    selectedEmployeeId,
+    setSelectedEmployeeId,
+    setActiveDate,
+    handleRemoveAssignment,
+    handleAddStaffToDay
+  } = useDayStaffSchedule();
 
   function openAddStaff(date: string) {
     setActiveDate(date);
     setSelectedEmployeeId(null);
-    setOpen(true);
+    setOpenAddStaffModal(true);
   }
+
+  // Need to redefine addDays locally for UI buttons if not exported from hook, 
+  // currently hook returns `days` array but `setWeekStart` needs a date.
+  // I will add a local helper or use the one from hook if I exported it? No I didn't export `addDays`. 
+  // I will add local helper.
+  function addDaysLocal(d: Date, n: number) {
+    const x = new Date(d);
+    x.setDate(x.getDate() + n);
+    return x;
+  }
+
+
 
   if (loading) {
     return (
@@ -416,7 +147,7 @@ export default function DayStaffSchedule({ readOnly = false, employeeId, refresh
               <Button
                 size="sm"
                 variant="flat"
-                onPress={() => setWeekStart(addDays(weekStart, -7))}
+                onPress={() => setWeekStart(addDaysLocal(weekStart, -7))}
                 className="min-w-[40px]"
               >
                 ←
@@ -427,7 +158,7 @@ export default function DayStaffSchedule({ readOnly = false, employeeId, refresh
               <Button
                 size="sm"
                 variant="flat"
-                onPress={() => setWeekStart(addDays(weekStart, 7))}
+                onPress={() => setWeekStart(addDaysLocal(weekStart, 7))}
                 className="min-w-[40px]"
               >
                 →
@@ -509,7 +240,7 @@ export default function DayStaffSchedule({ readOnly = false, employeeId, refresh
                                     size="sm"
                                     variant="light"
                                     color="danger"
-                                    onPress={() => removeAssignment(dateStr, a.employeeId)}
+                                    onPress={() => handleRemoveAssignment(dateStr, a.employeeId)}
                                     className="w-full text-xs sm:text-sm mt-1"
                                   >
                                     Remove
@@ -542,8 +273,8 @@ export default function DayStaffSchedule({ readOnly = false, employeeId, refresh
 
       {/* Add staff modal */}
       <Modal
-        isOpen={open}
-        onOpenChange={setOpen}
+        isOpen={openAddStaffModal}
+        onOpenChange={setOpenAddStaffModal}
         size="lg"
         scrollBehavior="inside"
         classNames={{
@@ -587,7 +318,7 @@ export default function DayStaffSchedule({ readOnly = false, employeeId, refresh
                 </Button>
                 <Button
                   color="primary"
-                  onPress={addStaffToDay}
+                  onPress={handleAddStaffToDay}
                   isDisabled={!selectedEmployeeId || isSubmitting}
                   isLoading={isSubmitting}
                   className="w-full sm:w-auto"

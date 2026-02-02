@@ -74,11 +74,11 @@ export const useAdminDashboardStore = create<AdminDashboardStore>((set) => ({
             // 使用 GET /appointment/user/{userId} 端点获取指定员工的所有预约
             const sanitizedEmployeeId = encodeURIComponent(employeeId.trim());
             const endpoint = `appointment/user/${sanitizedEmployeeId}`;
-            
+
             console.log("Fetching appointments for employee:", employeeId, "using endpoint:", endpoint);
-            
+
             let appointments: Appointment[] = [];
-            
+
             try {
                 // 直接调用 API，不带 date 参数以获取所有预约
                 // API 返回格式：Appointment[] (数组)
@@ -99,39 +99,39 @@ export const useAdminDashboardStore = create<AdminDashboardStore>((set) => ({
                     throw finalError;
                 }
             }
-            
+
             // 验证返回的数据结构
             if (!Array.isArray(appointments)) {
                 console.warn("Invalid response format, expected array but got:", typeof appointments, appointments);
                 appointments = [];
             }
-            
+
             // 过滤出该员工的预约，排除已取消的预约
             // 注意：API 应该已经返回该员工的预约，但这里做额外的验证
             const employeeAppointments = appointments.filter(
                 (apt) => apt && apt.employeeId === employeeId && apt.status !== "CANCELLED"
             );
-            
+
             // 按日期排序（最新的在前）
             const sortedAppointments = employeeAppointments.sort((a, b) => {
                 const dateA = new Date(a.date).getTime();
                 const dateB = new Date(b.date).getTime();
                 return dateB - dateA; // 降序排列
             });
-            
+
             console.log("Filtered and sorted appointments:", sortedAppointments.length, "appointments");
-            
-            set({ 
+
+            set({
                 appointments: sortedAppointments,
                 loading: false,
                 error: ""
             });
         } catch (error) {
             console.error("Error fetching appointments:", error);
-            const errorMessage = error instanceof Error 
-                ? error.message 
+            const errorMessage = error instanceof Error
+                ? error.message
                 : "Failed to load appointments.";
-            set({ 
+            set({
                 appointments: [],
                 loading: false,
                 error: errorMessage

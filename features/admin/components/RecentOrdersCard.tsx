@@ -1,20 +1,10 @@
 "use client";
 
 import { Card, CardBody, CardHeader, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Chip } from "@heroui/react";
+import { useRecentOrdersStore } from "../store/useRecentOrdersStore";
 
-interface Order {
-  id: number;
-  customer: string;
-  product: string;
-  status: string;
-  date: string;
-}
-
-interface RecentOrdersCardProps {
-  orders: Order[];
-}
-
-export default function RecentOrdersCard({ orders }: RecentOrdersCardProps) {
+export default function RecentOrdersCard() {
+  const { recentOrders } = useRecentOrdersStore();
   return (
     <Card>
       <CardHeader>
@@ -29,7 +19,7 @@ export default function RecentOrdersCard({ orders }: RecentOrdersCardProps) {
             <TableColumn>STATUS</TableColumn>
           </TableHeader>
           <TableBody>
-            {orders.map((order) => (
+            {recentOrders.map((order) => (
               <TableRow key={order.id}>
                 <TableCell>{order.id}</TableCell>
                 <TableCell>{order.customer}</TableCell>
@@ -40,8 +30,10 @@ export default function RecentOrdersCard({ orders }: RecentOrdersCardProps) {
                       order.status === "Completed"
                         ? "success"
                         : order.status === "Pending"
-                        ? "warning"
-                        : "primary"
+                          ? "warning"
+                          : order.status === "Cancelled"
+                            ? "danger"
+                            : "primary"
                     }
                     size="sm"
                   >

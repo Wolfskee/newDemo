@@ -7,7 +7,7 @@ import StatsCard from "./components/StatsCard";
 import RecentOrdersCard from "./components/RecentOrdersCard";
 import QuickActionsCard from "./components/QuickActionsCard";
 import MyAppointmentsSection from "./components/MyAppointmentsSection";
-import AdminDashboardLoadingSkeleton from "./components/AdminDashboardLoadingSkeleton";
+import { Skeleton, Card } from "@heroui/react";
 import DayStaffSchedule from "./components/DayStaffSchedule";
 
 export default function AdminDashboardPage() {
@@ -25,20 +25,66 @@ export default function AdminDashboardPage() {
     const [isNavExpanded, setIsNavExpanded] = useState(true);
 
     if (!adminUser || loading) {
-        return <AdminDashboardLoadingSkeleton />;
+        return (
+            <div className="min-h-screen bg-gray-900 flex">
+                {/* Skeleton Sidebar */}
+                <div className={`
+                    hidden lg:flex flex-col fixed left-0 top-0 h-full bg-gray-900 border-r border-gray-800 z-50
+                    transition-all duration-300 ease-in-out w-64 p-4 gap-4
+                `}>
+                    <Skeleton className="h-12 w-full rounded-lg" />
+                    <div className="space-y-2">
+                        <Skeleton className="h-10 w-full rounded-lg" />
+                        <Skeleton className="h-10 w-full rounded-lg" />
+                        <Skeleton className="h-10 w-full rounded-lg" />
+                        <Skeleton className="h-10 w-full rounded-lg" />
+                    </div>
+                </div>
+
+                {/* Skeleton Main Content */}
+                <main className="flex-1 lg:ml-64 p-8">
+                    <div className="max-w-7xl mx-auto space-y-8">
+                        {/* Header Skeleton */}
+                        <div className="flex justify-between items-center mb-8">
+                            <div className="space-y-2">
+                                <Skeleton className="h-8 w-48 rounded-lg" />
+                                <Skeleton className="h-4 w-64 rounded-lg" />
+                            </div>
+                            <Skeleton className="h-10 w-24 rounded-lg" />
+                        </div>
+
+                        {/* Stats Grid Skeleton */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            {[1, 2, 3, 4].map((i) => (
+                                <Card key={i} className="p-4 space-y-3">
+                                    <Skeleton className="h-4 w-24 rounded-lg" />
+                                    <Skeleton className="h-8 w-16 rounded-lg" />
+                                </Card>
+                            ))}
+                        </div>
+
+                        {/* Recent Orders Skeleton */}
+                        <Card className="p-4 space-y-4">
+                            <Skeleton className="h-8 w-48 rounded-lg" />
+                            <Skeleton className="h-64 w-full rounded-lg" />
+                        </Card>
+                    </div>
+                </main>
+            </div>
+        );
     }
 
     return (
         <div className="min-h-screen bg-gray-900 flex">
             {/* 左侧导航栏 */}
-            <QuickActionsCard 
-                adminUser={adminUser} 
+            <QuickActionsCard
+                adminUser={adminUser}
                 isExpanded={isNavExpanded}
                 onToggle={() => setIsNavExpanded(!isNavExpanded)}
             />
-            
+
             {/* 主内容区 */}
-            <main 
+            <main
                 className={`
                     flex-1 transition-all duration-300 ease-in-out
                     lg:${isNavExpanded ? 'ml-64' : 'ml-20'}
@@ -60,14 +106,14 @@ export default function AdminDashboardPage() {
                         </div>
 
                         <div className="mb-8">
-                            <RecentOrdersCard orders={recentOrders} />
+                            <RecentOrdersCard />
                         </div>
 
                         {isEmployee && (
                             <>
 
-                                <MyAppointmentsSection 
-                                    appointments={appointments} 
+                                <MyAppointmentsSection
+                                    appointments={appointments}
                                     onAppointmentsUpdate={handleAppointmentsUpdate}
                                 />
                             </>
