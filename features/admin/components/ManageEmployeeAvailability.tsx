@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import {
   Card,
   CardBody,
@@ -11,7 +10,6 @@ import {
   ModalHeader,
   ModalBody,
   ModalFooter,
-  useDisclosure,
   Table,
   TableHeader,
   TableColumn,
@@ -25,234 +23,63 @@ import {
   DatePicker,
   Input,
 } from "@heroui/react";
-import { parseDate, CalendarDate } from "@internationalized/date";
-import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api-client";
-import { User, UserListResponse, Availability, AvailabilityListResponse } from "@/types/api";
+import { useManageEmployeeAvailability } from "../hooks/useManageEmployeeAvailability";
 
-interface ManageEmployeeAvailabilityProps {
-  onSuccess?: () => void;
-}
+export default function ManageEmployeeAvailability() {
+  const {
+    employees,
+    selectedEmployee,
+    setSelectedEmployee,
+    editingAvailability,
+    availabilities,
+    loading,
+    loadingAvailabilities,
+    queryDate,
+    setQueryDate,
+    selectedDate,
+    setSelectedDate,
+    startTime,
+    setStartTime,
+    endTime,
+    setEndTime,
+    status,
+    setStatus,
+    isSubmitting,
+    isOpen,
+    onOpenChange,
+    handleOpenModal,
+    handleSubmit,
+    handleDelete
+  } = useManageEmployeeAvailability();
 
-export default function ManageEmployeeAvailability({ onSuccess }: ManageEmployeeAvailabilityProps) {
-  const [employees, setEmployees] = useState<User[]>([]);
-  const [selectedEmployee, setSelectedEmployee] = useState<User | null>(null);
-  const [editingAvailability, setEditingAvailability] = useState<Availability | null>(null);
-  const [availabilities, setAvailabilities] = useState<Availability[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingAvailabilities, setLoadingAvailabilities] = useState(false);
-  const { isOpen, onOpen, onOpenChange } = useDisclosure();
-
-  // 查询日期（用于获取 availability）
-  const [queryDate, setQueryDate] = useState<CalendarDate | null>(() => {
-    const today = new Date();
-    return parseDate(today.toISOString().split("T")[0]);
-  });
-
-  // 表单状态（用于添加）
-  const [selectedDate, setSelectedDate] = useState<CalendarDate | null>(null);
-  const [startTime, setStartTime] = useState<string>("09:00");
-  const [endTime, setEndTime] = useState<string>("17:00");
-  const [status, setStatus] = useState<string>("OPEN");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // 获取员工列表
-  useEffect(() => {
-    const fetchEmployees = async () => {
-      try {
-        setLoading(true);
-        const data: UserListResponse = await apiGet<UserListResponse>("user");
-        const employeeList = (data.users || []).filter(
-          (user: User) => user.role === "EMPLOYEE" || user.role === "employee"
-        );
-        setEmployees(employeeList);
-        // 初始值保持为 null，表示 "All Employees"
-      } catch (error) {
-        console.error("Error fetching employees:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchEmployees();
-  }, []);
-
-  // 当选择员工或查询日期改变时，获取 availability
-  useEffect(() => {
-    if (queryDate) {
-      fetchEmployeeAvailability(selectedEmployee?.id);
-    }
-  }, [selectedEmployee, queryDate]);
-
-  const fetchEmployeeAvailability = async (employeeId?: string) => {
-    if (!queryDate) return;
-
-    try {
-      setLoadingAvailabilities(true);
-      // 格式化日期为 YYYY-MM-DD
-      const dateString = `${queryDate.year}-${String(queryDate.month).padStart(2, "0")}-${String(queryDate.day).padStart(2, "0")}`;
-
-
-
-      // API 需要 date 参数（必需），可选 employeeId 参数
-      const params: Record<string, string> = {
-        date: dateString,
-      };
-
-      // 如果选择了员工，添加 employeeId 参数
-      if (employeeId) {
-        params.employeeId = employeeId;
-      }
-
-
-
-      // API 直接返回数组格式 [{...}], 不是 {availabilities: [...]}
-      const response = await apiGet<any>(
-        `availability`,
-        {
-          params: params,
-        }
-      );
-
-
-
-      // 处理不同的响应格式
-      let availabilities: Availability[] = [];
-      if (Array.isArray(response)) {
-        // API 直接返回数组
-        availabilities = response;
-      } else if (response?.availabilities && Array.isArray(response.availabilities)) {
-        // API 返回对象，包含 availabilities 数组
-        availabilities = response.availabilities;
-      } else if (response?.data && Array.isArray(response.data)) {
-        // API 返回对象，包含 data 数组
-        availabilities = response.data;
-      }
-
-
-
-      setAvailabilities(availabilities);
-    } catch (error) {
-      console.error("Error fetching availability:", error);
-      setAvailabilities([]);
-    } finally {
-      setLoadingAvailabilities(false);
-    }
-  };
-
-  const handleOpenModal = (availability?: Availability) => {
-    if (availability) {
-      setEditingAvailability(availability);
-      // parseDate expects YYYY-MM-DD
-      const dateStr = availability.date.split("T")[0];
-      setSelectedDate(parseDate(dateStr));
-      setStartTime(formatTime(availability.startTime));
-      setEndTime(formatTime(availability.endTime));
-      setStatus(availability.status);
-    } else {
-      setEditingAvailability(null);
-      setSelectedDate(null);
-      setStartTime("09:00");
-      setEndTime("17:00");
-      setStatus("OPEN");
-    }
-    onOpen();
-  };
-
-  const combineDateTime = (date: string, time: string): string => {
-    const [hours, minutes] = time.split(":");
-    const [year, month, day] = date.split("-").map(Number);
-    const dateTime = new Date(Date.UTC(year, month - 1, day, parseInt(hours), parseInt(minutes), 0));
-    return dateTime.toISOString();
-  };
-
-  const handleSubmit = async () => {
-    // Determine target employee ID: use selected employee or the one from the editing record
-    const targetEmployeeId = editingAvailability?.employeeId || selectedEmployee?.id;
-
-    if (!targetEmployeeId || !selectedDate) {
-      alert("Please select an employee and date");
-      return;
-    }
-
-    if (!startTime || !endTime) {
-      alert("Please enter both start and end time");
-      return;
-    }
-
-    if (startTime >= endTime) {
-      alert("End time must be after start time");
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      const dateString = `${selectedDate.year}-${String(selectedDate.month).padStart(2, "0")}-${String(selectedDate.day).padStart(2, "0")}`;
-
-      const availabilityData = {
-        date: combineDateTime(dateString, "00:00"),
-        startTime: combineDateTime(dateString, startTime),
-        endTime: combineDateTime(dateString, endTime),
-        status: status,
-        employeeId: targetEmployeeId,
-      };
-
-      // Create or Update availability
-      if (editingAvailability) {
-        await apiPut(`availability/${editingAvailability.id}`, availabilityData);
-      } else {
-        await apiPost("availability", availabilityData);
-      }
-
-      // 刷新数据
-      await fetchEmployeeAvailability(selectedEmployee?.id);
-      if (onSuccess) {
-        onSuccess();
-      }
-      onOpenChange();
-    } catch (error) {
-      console.error("Error saving availability:", error);
-      alert(error instanceof Error ? error.message : "Failed to save availability");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this availability?")) {
-      return;
-    }
-
-    try {
-      await apiDelete(`availability/${id}`);
-      // 删除后刷新数据（无论是否选择了员工）
-      await fetchEmployeeAvailability(selectedEmployee?.id);
-      if (onSuccess) {
-        onSuccess();
-      }
-    } catch (error) {
-      console.error("Error deleting availability:", error);
-      alert(error instanceof Error ? error.message : "Failed to delete availability");
-    }
-  };
-
+  // Helper functions for display
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    // 使用 UTC 方法来避免时区转换问题
     return date.toLocaleDateString("en-US", {
       weekday: "short",
       year: "numeric",
       month: "short",
       day: "numeric",
-      timeZone: "UTC", // 明确使用 UTC 时区
+      timeZone: "UTC",
     });
   };
 
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
-    // 使用 UTC 方法来避免时区转换问题，使用24小时制
     const hours = String(date.getUTCHours()).padStart(2, "0");
     const minutes = String(date.getUTCMinutes()).padStart(2, "0");
     return `${hours}:${minutes}`;
   };
+
+  const onSubmit = () => {
+    handleSubmit();
+  };
+
+  const onDelete = (id: string) => {
+    handleDelete(id);
+  };
+
+
 
   if (loading) {
     return (
@@ -396,7 +223,7 @@ export default function ManageEmployeeAvailability({ onSuccess }: ManageEmployee
                                       size="sm"
                                       variant="flat"
                                       color="danger"
-                                      onPress={() => handleDelete(availability.id)}
+                                      onPress={() => onDelete(availability.id)}
                                     >
                                       Delete
                                     </Button>
@@ -474,7 +301,7 @@ export default function ManageEmployeeAvailability({ onSuccess }: ManageEmployee
                 </Button>
                 <Button
                   color="primary"
-                  onPress={handleSubmit}
+                  onPress={onSubmit}
                   isLoading={isSubmitting}
                 >
                   {editingAvailability ? "Save Changes" : "Create"}

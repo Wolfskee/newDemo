@@ -44,20 +44,55 @@ npm start
 
 ## Project Structure
 
-```
-├── app/
-│   ├── admin/          # Admin portal pages
-│   │   ├── page.tsx    # Admin login
-│   │   └── dashboard/  # Admin dashboard
-│   ├── login/          # User login
-│   ├── register/       # User registration
-│   ├── products/       # Products page
-│   ├── services/       # Services page
-│   └── page.tsx        # Home page
-├── components/         # Reusable components
-├── contexts/           # React contexts (Auth)
-└── ...
-```
+### `app/`
+Contains the **Next.js App Router** structure. This directory defines the routing of the application.
+- Each folder inside represents a route segment (e.g., `app/login` -> `/login`).
+- `page.tsx`: The UI for a route.
+- `layout.tsx`: Shared UI for a segment and its children.
+- `api/`: API routes (backend logic).
+
+### `features/`
+This project follows a **Feature-Based Architecture**. Most of the business logic and feature-specific UI lives here, keeping the `app/` directory clean.
+- **admin/**: Functionality for admin users (dashboard, scheduling, user management).
+- **auth/**: Authentication logic (login, register forms).
+- **cart/**: Shopping cart logic and components.
+- **products/**: Product listing and details.
+- **profile/**: User profile management.
+- **services/**: Service listings or business services.
+- **home/**: Components specific to the landing page.
+
+Inside each feature folder (e.g., `features/admin/`), you will typically find:
+- `components/`: Components specific to that feature.
+- `hooks/`: Custom hooks for that feature.
+- `types/`: TypeScript types specific to that feature.
+
+### `components/`
+Contains **Shared/Common UI Components** that are used across multiple features.
+- Examples: Buttons, Inputs, Modals, Navbars, Footers.
+- These components are generic and not tied to specific business logic.
+
+### `lib/`
+Contains **Utility Functions and Libraries**.
+- `api-client.ts`: Wrapper for making API requests (GET, POST, PUT, DELETE).
+- Helper functions, formatting utilities, and external library configurations.
+
+### `contexts/`
+Contains **Global React Contexts**.
+- Used for state management that needs to be accessible throughout the app (e.g., Shopping Cart state, User Session state).
+
+### `types/`
+Contains **Global TypeScript Type Definitions**.
+- Interfaces and types that are shared across the application (e.g., `User`, `Product`, `ApiResponse` types).
+
+### `public/`
+Static assets like images, fonts, and icons.
+
+### Configuration Files
+
+- `package.json`: Project dependencies and scripts.
+- `next.config.js`: Next.js configuration.
+- `tailwind.config.js`: Tailwind CSS configuration (styling).
+- `tsconfig.json`: TypeScript configuration.
 
 ## Demo Credentials
 

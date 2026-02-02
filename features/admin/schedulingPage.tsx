@@ -13,7 +13,7 @@ export default function SchedulingPage() {
     const [isNavExpanded, setIsNavExpanded] = useState(true);
     const isEmployee = adminUser?.role === "EMPLOYEE" || adminUser?.role === "employee";
     const isAdmin = adminUser?.role?.toUpperCase() === "ADMIN";
-    const [refreshKey, setRefreshKey] = useState(0);
+
 
     useEffect(() => {
         // Check admin permission
@@ -70,10 +70,9 @@ export default function SchedulingPage() {
                         {isAdmin ? (
                             // ADMIN 用户：显示所有员工的 availability 管理
                             <div className="space-y-6">
-                                <ManageEmployeeAvailability onSuccess={() => setRefreshKey(prev => prev + 1)} />
+                                <ManageEmployeeAvailability />
                                 <DayStaffSchedule
                                     readOnly={false}
-                                    refreshTrigger={refreshKey}
                                 />
                             </div>
                         ) : (

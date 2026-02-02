@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import {
   Card,
   CardBody,
@@ -10,163 +9,36 @@ import {
   Chip,
   Input,
 } from "@heroui/react";
-import { parseDate, CalendarDate } from "@internationalized/date";
-import { apiPost } from "@/lib/api-client";
+import { parseDate } from "@internationalized/date";
+import { useEmployeeAvailabilityForm } from "../hooks/useEmployeeAvailabilityForm";
+import { AvailabilitySlot } from "../store/useEmployeeAvailabilityStore";
 
 interface EmployeeAvailabilityFormProps {
   employeeId: string;
   onSuccess?: () => void;
 }
 
-interface AvailabilitySlot {
-  id: string;
-  date: string; // YYYY-MM-DD 格式
-  startTime: string; // HH:mm 格式
-  endTime: string; // HH:mm 格式
-}
+
 
 export default function EmployeeAvailabilityForm({
   employeeId,
   onSuccess,
 }: EmployeeAvailabilityFormProps) {
-  const [selectedDate, setSelectedDate] = useState<CalendarDate | null>(null);
-  const [startTime, setStartTime] = useState<string>("09:00");
-  const [endTime, setEndTime] = useState<string>("17:00");
-  const [availableSlots, setAvailableSlots] = useState<AvailabilitySlot[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitMessage, setSubmitMessage] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
-
-  // 添加时间段到列表
-  const addSlot = () => {
-    if (!selectedDate) {
-      setErrorMessage("Please select a date");
-      return;
-    }
-
-    if (!startTime || !endTime) {
-      setErrorMessage("Please enter both start and end time");
-      return;
-    }
-
-    // 验证时间
-    if (startTime >= endTime) {
-      setErrorMessage("End time must be after start time");
-      return;
-    }
-
-    const dateString = `${selectedDate.year}-${String(selectedDate.month).padStart(2, "0")}-${String(selectedDate.day).padStart(2, "0")}`;
-    
-    const newSlot: AvailabilitySlot = {
-      id: `${dateString}-${startTime}-${endTime}-${Date.now()}`,
-      date: dateString,
-      startTime,
-      endTime,
-    };
-
-    // 检查是否已存在相同的时间段
-    const exists = availableSlots.some(
-      (slot) =>
-        slot.date === dateString &&
-        slot.startTime === startTime &&
-        slot.endTime === endTime
-    );
-
-    if (exists) {
-      setErrorMessage("This time slot already exists");
-      return;
-    }
-
-    setAvailableSlots([...availableSlots, newSlot].sort((a, b) => {
-      if (a.date !== b.date) return a.date.localeCompare(b.date);
-      return a.startTime.localeCompare(b.startTime);
-    }));
-    setSelectedDate(null);
-    setStartTime("09:00");
-    setEndTime("17:00");
-    setErrorMessage("");
-  };
-
-  // 移除时间段
-  const removeSlot = (id: string) => {
-    setAvailableSlots(availableSlots.filter((slot) => slot.id !== id));
-  };
-
-  // 将日期和时间组合成 ISO 格式 (UTC)
-  const combineDateTime = (date: string, time: string): string => {
-    const [hours, minutes] = time.split(":");
-    // 使用 UTC 创建日期，避免时区转换问题
-    const [year, month, day] = date.split("-").map(Number);
-    const dateTime = new Date(Date.UTC(year, month - 1, day, parseInt(hours), parseInt(minutes), 0));
-    return dateTime.toISOString();
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    setSubmitMessage("");
-    setErrorMessage("");
-
-    // 验证表单
-    if (availableSlots.length === 0) {
-      setErrorMessage("Please add at least one availability slot");
-      setIsSubmitting(false);
-      return;
-    }
-
-    try {
-      // 为每个时间段单独发送请求
-      const promises = availableSlots.map((slot) => {
-        const availabilityData = {
-          date: combineDateTime(slot.date, "00:00"), // 日期使用当天的 00:00:00
-          startTime: combineDateTime(slot.date, slot.startTime),
-          endTime: combineDateTime(slot.date, slot.endTime),
-          status: "OPEN" as const,
-          employeeId: employeeId,
-        };
-
-        console.log("Submitting availability:", availabilityData);
-        return apiPost("availability", availabilityData);
-      });
-
-      // 等待所有请求完成
-      await Promise.all(promises);
-
-      setSubmitMessage(
-        `Availability submitted successfully! ✓ ${availableSlots.length} slot(s) added.`
-      );
-
-      // 重置表单
-      setAvailableSlots([]);
-      setSelectedDate(null);
-      setStartTime("09:00");
-      setEndTime("17:00");
-
-      // 调用成功回调
-      if (onSuccess) {
-        onSuccess();
-      }
-    } catch (error) {
-      console.error("Error submitting availability:", error);
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "Failed to submit availability. Please try again."
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // 成功消息自动消失（5秒后）
-  useEffect(() => {
-    if (submitMessage) {
-      const timer = setTimeout(() => {
-        setSubmitMessage("");
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [submitMessage]);
+  const {
+    selectedDate,
+    setSelectedDate,
+    startTime,
+    setStartTime,
+    endTime,
+    setEndTime,
+    availableSlots,
+    isSubmitting,
+    submitMessage,
+    errorMessage,
+    addSlot,
+    removeSlot,
+    handleSubmit
+  } = useEmployeeAvailabilityForm(employeeId, onSuccess);
 
   // 格式化日期和时间显示
   const formatSlotDisplay = (slot: AvailabilitySlot) => {
