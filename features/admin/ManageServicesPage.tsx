@@ -233,14 +233,14 @@ export default function ManageServicesPage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
       {/* 左侧导航栏 */}
-      <QuickActionsCard 
-        adminUser={adminUser} 
+      <QuickActionsCard
+        adminUser={adminUser}
         isExpanded={isNavExpanded}
         onToggle={() => setIsNavExpanded(!isNavExpanded)}
       />
-      
+
       {/* 主内容区 */}
-      <main 
+      <main
         className={`
           flex-1 transition-all duration-300 ease-in-out
           lg:${isNavExpanded ? 'ml-64' : 'ml-20'}
@@ -248,241 +248,242 @@ export default function ManageServicesPage() {
       >
         <div className="py-4 md:py-8 px-3 sm:px-4">
           <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-6 md:mb-8 gap-4">
-          <div>
-            <h1 className="text-2xl md:text-4xl font-bold text-gray-900 dark:text-white">
-              Manage Services
-            </h1>
-            <p className="text-sm md:text-base text-gray-600 dark:text-gray-400 mt-1 md:mt-2">
-              Add, edit, or remove services
-            </p>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <Button
-              color="default"
-              variant="flat"
-              onPress={() => router.push("/admin/dashboard")}
-              size="sm"
-              className="w-full sm:w-auto"
+            <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-6 md:mb-8 gap-4">
+              <div>
+                <h1 className="text-2xl md:text-4xl font-bold text-gray-900 dark:text-white">
+                  Manage Services
+                </h1>
+                <p className="text-sm md:text-base text-gray-600 dark:text-gray-400 mt-1 md:mt-2">
+                  Add, edit, or remove services
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Button
+                  color="default"
+                  variant="flat"
+                  onPress={() => router.push("/admin/dashboard")}
+                  size="sm"
+                  className="w-full sm:w-auto"
+                >
+                  ← Back
+                </Button>
+                <Button
+                  color="secondary"
+                  onPress={() => handleOpenModal()}
+                  size="sm"
+                  className="w-full sm:w-auto"
+                >
+                  + Add Service
+                </Button>
+              </div>
+            </div>
+
+            <ServicesTableCard
+              services={services}
+              onEdit={handleOpenModal}
+              onDelete={handleDelete}
+            />
+
+            {/* Add/Edit Service Modal */}
+            <Modal
+              isOpen={isOpen}
+              onOpenChange={onOpenChange}
+              size="2xl"
+              scrollBehavior="inside"
+              placement="top"
+              classNames={{
+                base: "max-w-[95vw] sm:max-w-2xl my-2 sm:my-8",
+                body: "py-4 sm:py-6",
+              }}
             >
-              ← Back
-            </Button>
-            <Button 
-              color="secondary" 
-              onPress={() => handleOpenModal()}
-              size="sm"
-              className="w-full sm:w-auto"
-            >
-              + Add Service
-            </Button>
-          </div>
-        </div>
-
-        <ServicesTableCard
-          services={services}
-          onEdit={handleOpenModal}
-          onDelete={handleDelete}
-        />
-
-        {/* Add/Edit Service Modal */}
-        <Modal 
-          isOpen={isOpen} 
-          onOpenChange={onOpenChange} 
-          size="2xl" 
-          scrollBehavior="inside"
-          classNames={{
-            base: "max-w-[95vw] sm:max-w-2xl",
-            body: "py-4 sm:py-6",
-          }}
-        >
-          <ModalContent>
-            {(onClose) => (
-              <>
-                <ModalHeader>
-                  {editingService ? "Edit Service" : "Add New Service"}
-                </ModalHeader>
-                <ModalBody>
-                  <div className="space-y-4">
-                    <Input
-                      label="Service Name"
-                      placeholder="Enter service name"
-                      value={formData.name}
-                      onChange={(e) =>
-                        setFormData({ ...formData, name: e.target.value })
-                      }
-                      isRequired
-                      fullWidth
-                    />
-
-                    <Textarea
-                      label="Description"
-                      placeholder="Enter service description"
-                      value={formData.description}
-                      onChange={(e) =>
-                        setFormData({ ...formData, description: e.target.value })
-                      }
-                      isRequired
-                      minRows={3}
-                      fullWidth
-                    />
-
-                    <Input
-                      label="Price"
-                      type="number"
-                      step="0.01"
-                      placeholder="e.g., 45.99"
-                      value={formData.price}
-                      onChange={(e) =>
-                        setFormData({ ...formData, price: e.target.value })
-                      }
-                      isRequired
-                      fullWidth
-                    />
-
-                    <Input
-                      label="Duration (minutes)"
-                      type="number"
-                      placeholder="e.g., 30"
-                      value={formData.duration}
-                      onChange={(e) =>
-                        setFormData({ ...formData, duration: e.target.value })
-                      }
-                      isRequired
-                      description="Duration must be greater than 0"
-                      fullWidth
-                    />
-
-                    <Input
-                      label="Category"
-                      placeholder="e.g., Service"
-                      value={formData.category}
-                      onChange={(e) =>
-                        setFormData({ ...formData, category: e.target.value })
-                      }
-                      fullWidth
-                    />
-
-                    <Select
-                      label="Status"
-                      selectedKeys={[formData.status]}
-                      onSelectionChange={(keys) => {
-                        const selected = Array.from(keys)[0] as string;
-                        setFormData({ ...formData, status: selected });
-                      }}
-                      fullWidth
-                    >
-                      <SelectItem key="ACTIVE">
-                        ACTIVE
-                      </SelectItem>
-                      <SelectItem key="INACTIVE">
-                        INACTIVE
-                      </SelectItem>
-                    </Select>
-
-                    <div className="space-y-3">
-                      <label className="block text-sm font-medium">
-                        Service Image <span className="text-danger">*</span>
-                      </label>
-                      
-                      {/* 文件上传 */}
-                      <div>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleImageFileChange}
-                          className="hidden"
-                          id="service-image-input"
+              <ModalContent>
+                {(onClose) => (
+                  <>
+                    <ModalHeader>
+                      {editingService ? "Edit Service" : "Add New Service"}
+                    </ModalHeader>
+                    <ModalBody>
+                      <div className="space-y-4">
+                        <Input
+                          label="Service Name"
+                          placeholder="Enter service name"
+                          value={formData.name}
+                          onChange={(e) =>
+                            setFormData({ ...formData, name: e.target.value })
+                          }
+                          isRequired
+                          fullWidth
                         />
-                        <label htmlFor="service-image-input">
-                          <Button
-                            as="span"
-                            size="sm"
-                            variant="flat"
-                            color="secondary"
-                            className="cursor-pointer"
-                            isDisabled={isSubmitting}
-                          >
-                            {imageFile ? "Change Image File" : "Upload Image File"}
-                          </Button>
-                        </label>
-                        {imageFile && (
-                          <p className="text-xs text-gray-500 mt-1">
-                            Selected: {imageFile.name}
-                          </p>
+
+                        <Textarea
+                          label="Description"
+                          placeholder="Enter service description"
+                          value={formData.description}
+                          onChange={(e) =>
+                            setFormData({ ...formData, description: e.target.value })
+                          }
+                          isRequired
+                          minRows={3}
+                          fullWidth
+                        />
+
+                        <Input
+                          label="Price"
+                          type="number"
+                          step="0.01"
+                          placeholder="e.g., 45.99"
+                          value={formData.price}
+                          onChange={(e) =>
+                            setFormData({ ...formData, price: e.target.value })
+                          }
+                          isRequired
+                          fullWidth
+                        />
+
+                        <Input
+                          label="Duration (minutes)"
+                          type="number"
+                          placeholder="e.g., 30"
+                          value={formData.duration}
+                          onChange={(e) =>
+                            setFormData({ ...formData, duration: e.target.value })
+                          }
+                          isRequired
+                          description="Duration must be greater than 0"
+                          fullWidth
+                        />
+
+                        <Input
+                          label="Category"
+                          placeholder="e.g., Service"
+                          value={formData.category}
+                          onChange={(e) =>
+                            setFormData({ ...formData, category: e.target.value })
+                          }
+                          fullWidth
+                        />
+
+                        <Select
+                          label="Status"
+                          selectedKeys={[formData.status]}
+                          onSelectionChange={(keys) => {
+                            const selected = Array.from(keys)[0] as string;
+                            setFormData({ ...formData, status: selected });
+                          }}
+                          fullWidth
+                        >
+                          <SelectItem key="ACTIVE">
+                            ACTIVE
+                          </SelectItem>
+                          <SelectItem key="INACTIVE">
+                            INACTIVE
+                          </SelectItem>
+                        </Select>
+
+                        <div className="space-y-3">
+                          <label className="block text-sm font-medium">
+                            Service Image <span className="text-danger">*</span>
+                          </label>
+
+                          {/* 文件上传 */}
+                          <div>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleImageFileChange}
+                              className="hidden"
+                              id="service-image-input"
+                            />
+                            <label htmlFor="service-image-input">
+                              <Button
+                                as="span"
+                                size="sm"
+                                variant="flat"
+                                color="secondary"
+                                className="cursor-pointer"
+                                isDisabled={isSubmitting}
+                              >
+                                {imageFile ? "Change Image File" : "Upload Image File"}
+                              </Button>
+                            </label>
+                            {imageFile && (
+                              <p className="text-xs text-gray-500 mt-1">
+                                Selected: {imageFile.name}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="relative">
+                            <div className="absolute inset-0 flex items-center">
+                              <div className="w-full border-t border-gray-300 dark:border-gray-600" />
+                            </div>
+                            <div className="relative flex justify-center text-xs uppercase">
+                              <span className="bg-gray-50 dark:bg-gray-900 px-2 text-gray-500">
+                                Or
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* URL 输入 */}
+                          <Input
+                            label="Image URL"
+                            placeholder="https://example.com/images/service.jpg"
+                            value={formData.imageUrl}
+                            onChange={(e) => {
+                              setFormData({ ...formData, imageUrl: e.target.value });
+                              setImagePreview(e.target.value);
+                              setImageFile(null); // 清除文件选择
+                            }}
+                            isDisabled={!!imageFile}
+                            fullWidth
+                          />
+                        </div>
+
+                        {imagePreview && (
+                          <div className="mt-4 space-y-2">
+                            <Image
+                              src={imagePreview}
+                              alt="Preview"
+                              width={200}
+                              height={200}
+                              className="object-cover rounded"
+                            />
+                            {editingService && editingService.imageUrl && !imageFile && (
+                              <Button
+                                size="sm"
+                                variant="flat"
+                                color="danger"
+                                onPress={() => handleDeleteImage(editingService.id)}
+                                isDisabled={isSubmitting}
+                              >
+                                Delete Current Image
+                              </Button>
+                            )}
+                          </div>
                         )}
                       </div>
-
-                      <div className="relative">
-                        <div className="absolute inset-0 flex items-center">
-                          <div className="w-full border-t border-gray-300 dark:border-gray-600" />
-                        </div>
-                        <div className="relative flex justify-center text-xs uppercase">
-                          <span className="bg-gray-50 dark:bg-gray-900 px-2 text-gray-500">
-                            Or
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* URL 输入 */}
-                      <Input
-                        label="Image URL"
-                        placeholder="https://example.com/images/service.jpg"
-                        value={formData.imageUrl}
-                        onChange={(e) => {
-                          setFormData({ ...formData, imageUrl: e.target.value });
-                          setImagePreview(e.target.value);
-                          setImageFile(null); // 清除文件选择
-                        }}
-                        isDisabled={!!imageFile}
-                        fullWidth
-                      />
-                    </div>
-
-                    {imagePreview && (
-                      <div className="mt-4 space-y-2">
-                        <Image
-                          src={imagePreview}
-                          alt="Preview"
-                          width={200}
-                          height={200}
-                          className="object-cover rounded"
-                        />
-                        {editingService && editingService.imageUrl && !imageFile && (
-                          <Button
-                            size="sm"
-                            variant="flat"
-                            color="danger"
-                            onPress={() => handleDeleteImage(editingService.id)}
-                            isDisabled={isSubmitting}
-                          >
-                            Delete Current Image
-                          </Button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </ModalBody>
-                <ModalFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
-                  <Button 
-                    variant="light" 
-                    onPress={onClose}
-                    className="w-full sm:w-auto"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    color="secondary"
-                    onPress={handleSubmit}
-                    isLoading={isSubmitting}
-                    className="w-full sm:w-auto"
-                  >
-                    {editingService ? "Update" : "Create"}
-                  </Button>
-                </ModalFooter>
-              </>
-            )}
-          </ModalContent>
-        </Modal>
+                    </ModalBody>
+                    <ModalFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
+                      <Button
+                        variant="light"
+                        onPress={onClose}
+                        className="w-full sm:w-auto"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        color="secondary"
+                        onPress={handleSubmit}
+                        isLoading={isSubmitting}
+                        className="w-full sm:w-auto"
+                      >
+                        {editingService ? "Update" : "Create"}
+                      </Button>
+                    </ModalFooter>
+                  </>
+                )}
+              </ModalContent>
+            </Modal>
           </div>
         </div>
       </main>

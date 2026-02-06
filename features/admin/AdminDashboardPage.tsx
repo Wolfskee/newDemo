@@ -42,7 +42,7 @@ export default function AdminDashboardPage() {
                 </div>
 
                 {/* Skeleton Main Content */}
-                <main className="flex-1 lg:ml-64 p-8">
+                <main className="flex-1 lg:ml-64 py-4 md:py-8 px-3 sm:px-4">
                     <div className="max-w-7xl mx-auto space-y-8">
                         {/* Header Skeleton */}
                         <div className="flex justify-between items-center mb-8">
@@ -86,7 +86,7 @@ export default function AdminDashboardPage() {
             {/* 主内容区 */}
             <main
                 className={`
-                    flex-1 transition-all duration-300 ease-in-out
+                    flex-1 min-w-0 transition-all duration-300 ease-in-out
                     lg:${isNavExpanded ? 'ml-64' : 'ml-20'}
                 `}
             >
