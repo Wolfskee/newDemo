@@ -40,14 +40,14 @@ export default function EmployeeDetailPage() {
       const foundEmployee = usersData.users?.find(
         (u: User) => u.email === decodedEmail && (u.role === "EMPLOYEE" || u.role === "employee")
       );
-      
+
       if (foundEmployee) {
         setEmployee(foundEmployee);
-        
+
         // 使用 /appointment/user/{employeeId} 端点获取指定员工的所有预约
         const sanitizedEmployeeId = encodeURIComponent(foundEmployee.id.trim());
         const endpoint = `appointment/user/${sanitizedEmployeeId}`;
-        
+
         try {
           // 获取所有预约（不添加日期过滤，以便在日历中显示所有预约）
           const appointmentsData: Appointment[] = await apiGet<Appointment[]>(endpoint);
@@ -99,47 +99,47 @@ export default function EmployeeDetailPage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
       {/* 左侧导航栏 */}
-      <QuickActionsCard 
-        adminUser={adminUser} 
+      <QuickActionsCard
+        adminUser={adminUser}
         isExpanded={isNavExpanded}
         onToggle={() => setIsNavExpanded(!isNavExpanded)}
       />
-      
+
       {/* 主内容区 */}
-      <main 
+      <main
         className={`
           flex-1 transition-all duration-300 ease-in-out
-          lg:${isNavExpanded ? 'ml-64' : 'ml-20'}
+          lg:${isNavExpanded ? 'ml-10' : 'ml-20'}
         `}
       >
         <div className="py-4 md:py-8 px-3 sm:px-4">
           <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 sm:mb-8 gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">
-              Employee Details
-            </h1>
-            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1 sm:mt-2">
-              Appointment history for {employee.username || employee.email}
-            </p>
-          </div>
-          <Button
-            color="default"
-            variant="flat"
-            onPress={() => router.push("/admin/employees")}
-            size="sm"
-            className="w-full sm:w-auto"
-          >
-            ← Back to Employees
-          </Button>
-        </div>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 sm:mb-8 gap-4">
+              <div>
+                <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">
+                  Employee Details
+                </h1>
+                <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1 sm:mt-2">
+                  Appointment history for {employee.username || employee.email}
+                </p>
+              </div>
+              <Button
+                color="default"
+                variant="flat"
+                onPress={() => router.push("/admin/employees")}
+                size="sm"
+                className="w-full sm:w-auto"
+              >
+                ← Back to Employees
+              </Button>
+            </div>
 
-        <EmployeeInfoCard employee={employee} bookingsCount={appointments.length} />
-        
-        {/* 使用 BookingCalendar 显示员工的所有预约 */}
-        <div className="mt-6">
-          <BookingCalendar appointments={appointments} />
-        </div>
+            <EmployeeInfoCard employee={employee} bookingsCount={appointments.length} />
+
+            {/* 使用 BookingCalendar 显示员工的所有预约 */}
+            <div className="mt-6">
+              <BookingCalendar appointments={appointments} />
+            </div>
           </div>
         </div>
       </main>

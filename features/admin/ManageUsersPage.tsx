@@ -2,17 +2,17 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { 
-  Button, 
-  Modal, 
-  ModalContent, 
-  ModalHeader, 
-  ModalBody, 
-  ModalFooter, 
-  Input, 
-  Select, 
+import {
+  Button,
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  Input,
+  Select,
   SelectItem,
-  useDisclosure 
+  useDisclosure
 } from "@heroui/react";
 import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api-client";
 import { User, UserListResponse } from "@/types/api";
@@ -213,174 +213,174 @@ export default function ManageUsersPage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
       {/* 左侧导航栏 */}
-      <QuickActionsCard 
-        adminUser={adminUser} 
+      <QuickActionsCard
+        adminUser={adminUser}
         isExpanded={isNavExpanded}
         onToggle={() => setIsNavExpanded(!isNavExpanded)}
       />
-      
+
       {/* 主内容区 */}
-      <main 
+      <main
         className={`
           flex-1 transition-all duration-300 ease-in-out
-          lg:${isNavExpanded ? 'ml-64' : 'ml-20'}
+          lg:${isNavExpanded ? 'ml-10' : 'ml-20'}
         `}
       >
         <div className="py-4 md:py-8 px-3 sm:px-4">
           <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-6 md:mb-8 gap-4">
-          <div>
-            <h1 className="text-2xl md:text-4xl font-bold text-gray-900 dark:text-white">
-              Manage Users
-            </h1>
-            <p className="text-sm md:text-base text-gray-600 dark:text-gray-400 mt-1 md:mt-2">
-              View and manage all registered users
-            </p>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <Button
-              color="default"
-              variant="flat"
-              onPress={() => router.push("/admin/dashboard")}
-              size="sm"
-              className="w-full sm:w-auto"
+            <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-6 md:mb-8 gap-4">
+              <div>
+                <h1 className="text-2xl md:text-4xl font-bold text-gray-900 dark:text-white">
+                  Manage Users
+                </h1>
+                <p className="text-sm md:text-base text-gray-600 dark:text-gray-400 mt-1 md:mt-2">
+                  View and manage all registered users
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Button
+                  color="default"
+                  variant="flat"
+                  onPress={() => router.push("/admin/dashboard")}
+                  size="sm"
+                  className="w-full sm:w-auto"
+                >
+                  ← Back
+                </Button>
+                <Button
+                  color="primary"
+                  onPress={() => handleOpenModal()}
+                  size="sm"
+                  className="w-full sm:w-auto"
+                >
+                  + Add User
+                </Button>
+              </div>
+            </div>
+
+            <SearchCard
+              placeholder="Search users by email or username..."
+              value={searchTerm}
+              onChange={setSearchTerm}
+            />
+
+            <UsersTableCard
+              users={filteredUsers}
+              onEdit={handleOpenModal}
+              onDelete={handleDelete}
+            />
+
+            {/* Add/Edit User Modal */}
+            <Modal
+              isOpen={isOpen}
+              onOpenChange={onOpenChange}
+              size="2xl"
+              scrollBehavior="inside"
+              classNames={{
+                base: "max-w-[95vw] sm:max-w-2xl",
+                body: "py-4 sm:py-6",
+              }}
             >
-              ← Back
-            </Button>
-            <Button 
-              color="primary" 
-              onPress={() => handleOpenModal()}
-              size="sm"
-              className="w-full sm:w-auto"
-            >
-              + Add User
-            </Button>
-          </div>
-        </div>
-
-        <SearchCard
-          placeholder="Search users by email or username..."
-          value={searchTerm}
-          onChange={setSearchTerm}
-        />
-
-        <UsersTableCard
-          users={filteredUsers}
-          onEdit={handleOpenModal}
-          onDelete={handleDelete}
-        />
-
-        {/* Add/Edit User Modal */}
-        <Modal 
-          isOpen={isOpen} 
-          onOpenChange={onOpenChange} 
-          size="2xl" 
-          scrollBehavior="inside"
-          classNames={{
-            base: "max-w-[95vw] sm:max-w-2xl",
-            body: "py-4 sm:py-6",
-          }}
-        >
-          <ModalContent>
-            {(onClose) => (
-              <>
-                <ModalHeader>
-                  {editingUser ? "Edit User" : "Add New User"}
-                </ModalHeader>
-                <ModalBody>
-                  <div className="space-y-4">
-                    <Input
-                      label="Username"
-                      placeholder="Enter username"
-                      value={formData.username}
-                      onChange={(e) =>
-                        setFormData({ ...formData, username: e.target.value })
-                      }
-                      isRequired
-                      fullWidth
-                    />
-                    <Input
-                      label="Email"
-                      type="email"
-                      placeholder="Enter user email"
-                      value={formData.email}
-                      onChange={(e) =>
-                        setFormData({ ...formData, email: e.target.value })
-                      }
-                      isRequired
-                      fullWidth
-                    />
-                    <Input
-                      label="Password"
-                      type="password"
-                      placeholder={editingUser ? "Leave empty to keep current password" : "Enter password"}
-                      value={formData.password}
-                      onChange={(e) =>
-                        setFormData({ ...formData, password: e.target.value })
-                      }
-                      isRequired={!editingUser}
-                      fullWidth
-                    />
-                    {formData.password && (
-                      <Input
-                        label="Confirm Password"
-                        type="password"
-                        placeholder="Enter password again"
-                        value={formData.confirmPassword}
-                        onChange={(e) =>
-                          setFormData({ ...formData, confirmPassword: e.target.value })
-                        }
-                        isRequired={!!formData.password}
-                        fullWidth
-                        errorMessage={
-                          formData.confirmPassword && formData.password !== formData.confirmPassword
-                            ? "Passwords do not match"
-                            : undefined
-                        }
-                      />
-                    )}
-                    <Input
-                      label="Phone"
-                      type="tel"
-                      placeholder="Enter phone number"
-                      value={formData.phone}
-                      onChange={(e) =>
-                        setFormData({ ...formData, phone: e.target.value })
-                      }
-                      isRequired
-                      fullWidth
-                    />
-                    <Input
-                      label="Role"
-                      value="CUSTOMER"
-                      isDisabled
-                      isRequired
-                      fullWidth
-                      description="Role is fixed to CUSTOMER"
-                    />
-                  </div>
-                </ModalBody>
-                <ModalFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
-                  <Button 
-                    variant="light" 
-                    onPress={onClose}
-                    className="w-full sm:w-auto"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    color="primary"
-                    onPress={handleSubmit}
-                    isLoading={isSubmitting}
-                    className="w-full sm:w-auto"
-                  >
-                    {editingUser ? "Update" : "Create"}
-                  </Button>
-                </ModalFooter>
-              </>
-            )}
-          </ModalContent>
-        </Modal>
+              <ModalContent>
+                {(onClose) => (
+                  <>
+                    <ModalHeader>
+                      {editingUser ? "Edit User" : "Add New User"}
+                    </ModalHeader>
+                    <ModalBody>
+                      <div className="space-y-4">
+                        <Input
+                          label="Username"
+                          placeholder="Enter username"
+                          value={formData.username}
+                          onChange={(e) =>
+                            setFormData({ ...formData, username: e.target.value })
+                          }
+                          isRequired
+                          fullWidth
+                        />
+                        <Input
+                          label="Email"
+                          type="email"
+                          placeholder="Enter user email"
+                          value={formData.email}
+                          onChange={(e) =>
+                            setFormData({ ...formData, email: e.target.value })
+                          }
+                          isRequired
+                          fullWidth
+                        />
+                        <Input
+                          label="Password"
+                          type="password"
+                          placeholder={editingUser ? "Leave empty to keep current password" : "Enter password"}
+                          value={formData.password}
+                          onChange={(e) =>
+                            setFormData({ ...formData, password: e.target.value })
+                          }
+                          isRequired={!editingUser}
+                          fullWidth
+                        />
+                        {formData.password && (
+                          <Input
+                            label="Confirm Password"
+                            type="password"
+                            placeholder="Enter password again"
+                            value={formData.confirmPassword}
+                            onChange={(e) =>
+                              setFormData({ ...formData, confirmPassword: e.target.value })
+                            }
+                            isRequired={!!formData.password}
+                            fullWidth
+                            errorMessage={
+                              formData.confirmPassword && formData.password !== formData.confirmPassword
+                                ? "Passwords do not match"
+                                : undefined
+                            }
+                          />
+                        )}
+                        <Input
+                          label="Phone"
+                          type="tel"
+                          placeholder="Enter phone number"
+                          value={formData.phone}
+                          onChange={(e) =>
+                            setFormData({ ...formData, phone: e.target.value })
+                          }
+                          isRequired
+                          fullWidth
+                        />
+                        <Input
+                          label="Role"
+                          value="CUSTOMER"
+                          isDisabled
+                          isRequired
+                          fullWidth
+                          description="Role is fixed to CUSTOMER"
+                        />
+                      </div>
+                    </ModalBody>
+                    <ModalFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
+                      <Button
+                        variant="light"
+                        onPress={onClose}
+                        className="w-full sm:w-auto"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        color="primary"
+                        onPress={handleSubmit}
+                        isLoading={isSubmitting}
+                        className="w-full sm:w-auto"
+                      >
+                        {editingUser ? "Update" : "Create"}
+                      </Button>
+                    </ModalFooter>
+                  </>
+                )}
+              </ModalContent>
+            </Modal>
           </div>
         </div>
       </main>

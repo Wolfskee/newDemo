@@ -238,7 +238,7 @@ export default function ManageProductsPage() {
       <main
         className={`
           flex-1 transition-all duration-300 ease-in-out
-          lg:${isNavExpanded ? 'ml-64' : 'ml-20'}
+          lg:${isNavExpanded ? 'ml-10' : 'ml-20'}
         `}
       >
         <div className="py-4 md:py-8 px-3 sm:px-4">

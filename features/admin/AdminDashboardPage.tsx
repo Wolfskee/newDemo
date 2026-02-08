@@ -42,7 +42,7 @@ export default function AdminDashboardPage() {
                 </div>
 
                 {/* Skeleton Main Content */}
-                <main className="flex-1 lg:ml-64 py-4 md:py-8 px-3 sm:px-4">
+                <main className="flex-1 lg:ml-10 py-4 md:py-8 px-3 sm:px-4">
                     <div className="max-w-7xl mx-auto space-y-8">
                         {/* Header Skeleton */}
                         <div className="flex justify-between items-center mb-8">

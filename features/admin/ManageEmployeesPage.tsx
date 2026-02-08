@@ -40,13 +40,13 @@ export default function ManageEmployeesPage() {
     } else {
       const user = JSON.parse(stored);
       setAdminUser(user);
-      
+
       // 检查权限：只有 admin 可以访问此页面
       if (user.role === "employee") {
         router.push("/admin/dashboard");
         return;
       }
-      
+
       fetchEmployees();
     }
   }, [router]);
@@ -161,7 +161,7 @@ export default function ManageEmployeesPage() {
           console.error("Error sending employee credentials email:", emailError);
           // 即使邮件发送失败，也继续执行
         }
-        
+
         await fetchEmployees();
         onOpenChange();
         setFormData({ username: "", email: "", password: "", confirmPassword: "", phone: "" });
@@ -208,166 +208,166 @@ export default function ManageEmployeesPage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
       {/* 左侧导航栏 */}
-      <QuickActionsCard 
-        adminUser={adminUser} 
+      <QuickActionsCard
+        adminUser={adminUser}
         isExpanded={isNavExpanded}
         onToggle={() => setIsNavExpanded(!isNavExpanded)}
       />
-      
+
       {/* 主内容区 */}
-      <main 
+      <main
         className={`
           flex-1 transition-all duration-300 ease-in-out
-          lg:${isNavExpanded ? 'ml-64' : 'ml-20'}
+          lg:${isNavExpanded ? 'ml-10' : 'ml-20'}
         `}
       >
         <div className="py-4 md:py-8 px-3 sm:px-4">
           <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-6 md:mb-8 gap-4">
-          <div>
-            <h1 className="text-2xl md:text-4xl font-bold text-gray-900 dark:text-white">
-              Manage Employees
-            </h1>
-            <p className="text-sm md:text-base text-gray-600 dark:text-gray-400 mt-1 md:mt-2">
-              Add, edit, or remove employees
-            </p>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <Button
-              color="default"
-              variant="flat"
-              onPress={() => router.push("/admin/dashboard")}
-              size="sm"
-              className="w-full sm:w-auto"
+            <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-6 md:mb-8 gap-4">
+              <div>
+                <h1 className="text-2xl md:text-4xl font-bold text-gray-900 dark:text-white">
+                  Manage Employees
+                </h1>
+                <p className="text-sm md:text-base text-gray-600 dark:text-gray-400 mt-1 md:mt-2">
+                  Add, edit, or remove employees
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Button
+                  color="default"
+                  variant="flat"
+                  onPress={() => router.push("/admin/dashboard")}
+                  size="sm"
+                  className="w-full sm:w-auto"
+                >
+                  ← Back
+                </Button>
+                <Button
+                  color="warning"
+                  onPress={() => handleOpenModal()}
+                  size="sm"
+                  className="w-full sm:w-auto"
+                >
+                  + Add Employee
+                </Button>
+              </div>
+            </div>
+
+            <SearchCard
+              placeholder="Search employees by email..."
+              value={searchTerm}
+              onChange={setSearchTerm}
+            />
+
+            <EmployeesTableCard
+              employees={filteredEmployees}
+              onEdit={handleOpenModal}
+              onDelete={handleDelete}
+            />
+
+            {/* Add/Edit Employee Modal */}
+            <Modal
+              isOpen={isOpen}
+              onOpenChange={onOpenChange}
+              size="2xl"
+              scrollBehavior="inside"
+              classNames={{
+                base: "max-w-[95vw] sm:max-w-2xl",
+                body: "py-4 sm:py-6",
+              }}
             >
-              ← Back
-            </Button>
-            <Button 
-              color="warning" 
-              onPress={() => handleOpenModal()}
-              size="sm"
-              className="w-full sm:w-auto"
-            >
-              + Add Employee
-            </Button>
-          </div>
-        </div>
-
-        <SearchCard
-          placeholder="Search employees by email..."
-          value={searchTerm}
-          onChange={setSearchTerm}
-        />
-
-        <EmployeesTableCard
-          employees={filteredEmployees}
-          onEdit={handleOpenModal}
-          onDelete={handleDelete}
-        />
-
-        {/* Add/Edit Employee Modal */}
-        <Modal 
-          isOpen={isOpen} 
-          onOpenChange={onOpenChange} 
-          size="2xl" 
-          scrollBehavior="inside"
-          classNames={{
-            base: "max-w-[95vw] sm:max-w-2xl",
-            body: "py-4 sm:py-6",
-          }}
-        >
-          <ModalContent>
-            {(onClose) => (
-              <>
-                <ModalHeader>
-                  {editingEmployee ? "Edit Employee" : "Add New Employee"}
-                </ModalHeader>
-                <ModalBody>
-                  <div className="space-y-4">
-                    <Input
-                      label="Username"
-                      placeholder="Enter username"
-                      value={formData.username}
-                      onChange={(e) =>
-                        setFormData({ ...formData, username: e.target.value })
-                      }
-                      isRequired
-                      fullWidth
-                    />
-                    <Input
-                      label="Email"
-                      type="email"
-                      placeholder="Enter employee email"
-                      value={formData.email}
-                      onChange={(e) =>
-                        setFormData({ ...formData, email: e.target.value })
-                      }
-                      isRequired
-                      fullWidth
-                    />
-                    <Input
-                      label="Password"
-                      type="password"
-                      placeholder={editingEmployee ? "Leave empty to keep current password" : "Enter password"}
-                      value={formData.password}
-                      onChange={(e) =>
-                        setFormData({ ...formData, password: e.target.value })
-                      }
-                      isRequired={!editingEmployee}
-                      fullWidth
-                    />
-                    {formData.password && (
-                      <Input
-                        label="Confirm Password"
-                        type="password"
-                        placeholder="Enter password again"
-                        value={formData.confirmPassword}
-                        onChange={(e) =>
-                          setFormData({ ...formData, confirmPassword: e.target.value })
-                        }
-                        isRequired={!!formData.password}
-                        fullWidth
-                        errorMessage={
-                          formData.confirmPassword && formData.password !== formData.confirmPassword
-                            ? "Passwords do not match"
-                            : undefined
-                        }
-                      />
-                    )}
-                    <Input
-                      label="Phone"
-                      type="tel"
-                      placeholder="Enter phone number"
-                      value={formData.phone}
-                      onChange={(e) =>
-                        setFormData({ ...formData, phone: e.target.value })
-                      }
-                      isRequired
-                      fullWidth
-                    />
-                  </div>
-                </ModalBody>
-                <ModalFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
-                  <Button 
-                    variant="light" 
-                    onPress={onClose}
-                    className="w-full sm:w-auto"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    color="warning"
-                    onPress={handleSubmit}
-                    isLoading={isSubmitting}
-                    className="w-full sm:w-auto"
-                  >
-                    {editingEmployee ? "Update" : "Create"}
-                  </Button>
-                </ModalFooter>
-              </>
-            )}
-          </ModalContent>
-        </Modal>
+              <ModalContent>
+                {(onClose) => (
+                  <>
+                    <ModalHeader>
+                      {editingEmployee ? "Edit Employee" : "Add New Employee"}
+                    </ModalHeader>
+                    <ModalBody>
+                      <div className="space-y-4">
+                        <Input
+                          label="Username"
+                          placeholder="Enter username"
+                          value={formData.username}
+                          onChange={(e) =>
+                            setFormData({ ...formData, username: e.target.value })
+                          }
+                          isRequired
+                          fullWidth
+                        />
+                        <Input
+                          label="Email"
+                          type="email"
+                          placeholder="Enter employee email"
+                          value={formData.email}
+                          onChange={(e) =>
+                            setFormData({ ...formData, email: e.target.value })
+                          }
+                          isRequired
+                          fullWidth
+                        />
+                        <Input
+                          label="Password"
+                          type="password"
+                          placeholder={editingEmployee ? "Leave empty to keep current password" : "Enter password"}
+                          value={formData.password}
+                          onChange={(e) =>
+                            setFormData({ ...formData, password: e.target.value })
+                          }
+                          isRequired={!editingEmployee}
+                          fullWidth
+                        />
+                        {formData.password && (
+                          <Input
+                            label="Confirm Password"
+                            type="password"
+                            placeholder="Enter password again"
+                            value={formData.confirmPassword}
+                            onChange={(e) =>
+                              setFormData({ ...formData, confirmPassword: e.target.value })
+                            }
+                            isRequired={!!formData.password}
+                            fullWidth
+                            errorMessage={
+                              formData.confirmPassword && formData.password !== formData.confirmPassword
+                                ? "Passwords do not match"
+                                : undefined
+                            }
+                          />
+                        )}
+                        <Input
+                          label="Phone"
+                          type="tel"
+                          placeholder="Enter phone number"
+                          value={formData.phone}
+                          onChange={(e) =>
+                            setFormData({ ...formData, phone: e.target.value })
+                          }
+                          isRequired
+                          fullWidth
+                        />
+                      </div>
+                    </ModalBody>
+                    <ModalFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
+                      <Button
+                        variant="light"
+                        onPress={onClose}
+                        className="w-full sm:w-auto"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        color="warning"
+                        onPress={handleSubmit}
+                        isLoading={isSubmitting}
+                        className="w-full sm:w-auto"
+                      >
+                        {editingEmployee ? "Update" : "Create"}
+                      </Button>
+                    </ModalFooter>
+                  </>
+                )}
+              </ModalContent>
+            </Modal>
           </div>
         </div>
       </main>
